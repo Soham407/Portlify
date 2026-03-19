@@ -58,6 +58,50 @@ const PublicPortfolio = () => {
     }
   }, [data?.portfolio?.id]);
 
+  useEffect(() => {
+    if (!data) return;
+    const { bio, profile } = data;
+    const name = bio
+      ? `${bio.first_name || ""} ${bio.last_name || ""}`.trim()
+      : profile.full_name || username || "";
+    const description = bio?.bio || profile.headline || "";
+    const url = window.location.href;
+    const image = bio?.avatar_url || "";
+
+    const prevTitle = document.title;
+    const setMeta = (prop: string, value: string, attr = "name") => {
+      let el = document.querySelector(`meta[${attr}="${prop}"]`) as HTMLMetaElement | null;
+      const created = !el;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, prop);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", value);
+      return created;
+    };
+
+    document.title = name ? `${name} — Portfolio` : "Portfolio";
+    setMeta("description", description);
+    setMeta("og:title", name, "property");
+    setMeta("og:description", description, "property");
+    setMeta("og:url", url, "property");
+    if (image) setMeta("og:image", image, "property");
+    setMeta("twitter:card", "summary");
+    setMeta("twitter:title", name);
+    setMeta("twitter:description", description);
+
+    return () => {
+      document.title = prevTitle;
+      ["description", "twitter:card", "twitter:title", "twitter:description"].forEach((name) => {
+        document.querySelector(`meta[name="${name}"]`)?.remove();
+      });
+      ["og:title", "og:description", "og:url", "og:image"].forEach((prop) => {
+        document.querySelector(`meta[property="${prop}"]`)?.remove();
+      });
+    };
+  }, [data, username]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

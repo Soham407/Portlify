@@ -145,11 +145,12 @@ export const usePortfolio = (specificPortfolioId?: string) => {
 
   const updatePortfolio = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
-      const targetId = specificPortfolioId || portfolio?.id;
+      const { id: updateId, ...rest } = updates;
+      const targetId = updateId || specificPortfolioId || portfolio?.id;
       if (!targetId) throw new Error("No portfolio to update");
       const { data, error } = await supabase
         .from("portfolios")
-        .update(updates)
+        .update(rest)
         .eq("id", targetId)
         .select()
         .single();

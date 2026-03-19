@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,12 +9,13 @@ import { Progress } from "@/components/ui/progress";
 import {
   Briefcase, Save, Eye, ArrowLeft, Plus, Trash2, X, Github, Loader2, Check,
   Award, User, FolderGit2, Code2, Laptop2, GraduationCap, BadgeCheck, Mail,
-  ChevronRight
+  ChevronRight, Settings2, Globe, Lock, CheckCircle2, XCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import LinkedInImport from "@/components/LinkedInImport";
 import AvatarUpload from "@/components/builder/AvatarUpload";
 import AIPolishButton from "@/components/builder/AIPolishButton";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useBio } from "@/hooks/useBio";
@@ -25,11 +26,11 @@ import { useEducation } from "@/hooks/useEducation";
 import { useContact } from "@/hooks/useContact";
 import { useCertifications } from "@/hooks/useCertifications";
 import { useToast } from "@/hooks/use-toast";
-import { SKILL_CATEGORIES, SKILL_TYPES, VALIDATION_RULES, EMPLOYMENT_TYPES } from "@/lib/constants";
+import { SKILL_CATEGORIES, SKILL_TYPES, VALIDATION_RULES, EMPLOYMENT_TYPES, PORTFOLIO_TYPES } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Section = "bio" | "projects" | "skills" | "experience" | "education" | "certifications" | "contact";
+type Section = "bio" | "projects" | "skills" | "experience" | "education" | "certifications" | "contact" | "settings";
 
 const sections: { id: Section; label: string; icon: React.ElementType; description: string }[] = [
   { id: "bio", label: "Bio", icon: User, description: "Name, headline & about" },
@@ -39,12 +40,14 @@ const sections: { id: Section; label: string; icon: React.ElementType; descripti
   { id: "education", label: "Education", icon: GraduationCap, description: "Academic background" },
   { id: "certifications", label: "Certifications", icon: BadgeCheck, description: "Credentials & awards" },
   { id: "contact", label: "Contact", icon: Mail, description: "How to reach you" },
+  { id: "settings", label: "Settings", icon: Settings2, description: "Username & visibility" },
 ];
 
 const Builder = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { portfolio, isLoading: portfolioLoading, createPortfolio } = usePortfolio();
+  const [searchParams] = useSearchParams();
+  const { portfolio, isLoading: portfolioLoading, createPortfolio, updatePortfolio } = usePortfolio();
   const portfolioId = portfolio?.id;
 
   const { bio, saveBio } = useBio(portfolioId);
@@ -55,8 +58,18 @@ const Builder = () => {
   const { contact, saveContact } = useContact(portfolioId);
   const { certifications, addCertification, deleteCertification } = useCertifications(portfolioId);
 
-  const [activeSection, setActiveSection] = useState<Section>("bio");
+  const [activeSection, setActiveSection] = useState<Section>(() => {
+    const param = searchParams.get("section") as Section | null;
+    return param && sections.some((s) => s.id === param) ? param : "bio";
+  });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Settings state
+  const [usernameValue, setUsernameValue] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const [portfolioNameValue, setPortfolioNameValue] = useState("");
+  const [portfolioTypeValue, setPortfolioTypeValue] = useState("general");
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [bioForm, setBioForm] = useState({ first_name: "", last_name: "", headline: "", bio: "", location: "" });
   const [contactForm, setContactForm] = useState({ email: "", phone: "", linkedin_url: "", github_url: "", twitter_url: "", website_url: "" });
@@ -103,6 +116,72 @@ const Builder = () => {
       createPortfolio.mutate({});
     }
   }, [portfolioLoading, portfolio, user]);
+
+  // Initialize settings form from profile
+  const { data: profileData } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+  useEffect(() => {
+    if (profileData) setUsernameValue(profileData.username || "");
+  }, [profileData]);
+
+  useEffect(() => {
+    if (portfolio) {
+      setPortfolioNameValue(portfolio.name || "");
+      setPortfolioTypeValue(portfolio.portfolio_type || "general");
+    }
+  }, [portfolio?.id]);
+
+  const checkUsername = useCallback(async (value: string) => {
+    if (!value) { setUsernameStatus("idle"); return; }
+    if (!VALIDATION_RULES.USERNAME.PATTERN.test(value)) { setUsernameStatus("invalid"); return; }
+    if (value.length < VALIDATION_RULES.USERNAME.MIN_LENGTH || value.length > VALIDATION_RULES.USERNAME.MAX_LENGTH) {
+      setUsernameStatus("invalid"); return;
+    }
+    setUsernameStatus("checking");
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", value)
+      .neq("id", user!.id)
+      .maybeSingle();
+    setUsernameStatus(data ? "taken" : "available");
+  }, [user]);
+
+  const handleUsernameChange = (value: string) => {
+    setUsernameValue(value);
+    setUsernameStatus("idle");
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
+    usernameDebounceRef.current = setTimeout(() => checkUsername(value), 400);
+  };
+
+  const handleSaveSettings = async () => {
+    if (usernameStatus === "taken" || usernameStatus === "invalid") {
+      toast({ title: "Fix username errors first", variant: "destructive" }); return;
+    }
+    try {
+      await supabase.from("profiles").update({ username: usernameValue || null }).eq("id", user!.id);
+      await updatePortfolio.mutateAsync({ name: portfolioNameValue, portfolio_type: portfolioTypeValue });
+      toast({ title: "Settings saved!" });
+    } catch (e: any) {
+      toast({ title: "Error saving settings", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleToggleVisibility = async () => {
+    try {
+      await updatePortfolio.mutateAsync({ is_public: !portfolio?.is_public });
+      toast({ title: portfolio?.is_public ? "Portfolio is now private" : "Portfolio is now public" });
+    } catch (e: any) {
+      toast({ title: "Error updating visibility", description: e.message, variant: "destructive" });
+    }
+  };
 
   const handleSaveBio = () => {
     saveBio.mutate(bioForm, {
@@ -841,6 +920,87 @@ const Builder = () => {
                   </div>
                   <Button onClick={handleSaveContact} disabled={saveContact.isPending} variant="hero">
                     <Save className="mr-2 h-4 w-4" /> {saveContact.isPending ? "Saving..." : "Save Contact"}
+                  </Button>
+                </div>
+              )}
+
+              {/* SETTINGS */}
+              {activeSection === "settings" && (
+                <div className="space-y-6">
+                  {/* Username */}
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="text-sm font-semibold">Username</h3>
+                      <p className="text-xs text-muted-foreground">Your public portfolio URL: /p/username</p>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        value={usernameValue}
+                        onChange={(e) => handleUsernameChange(e.target.value.toLowerCase())}
+                        placeholder="e.g. johndoe"
+                        maxLength={VALIDATION_RULES.USERNAME.MAX_LENGTH}
+                        className="pr-9"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {usernameStatus === "checking" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {usernameStatus === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        {(usernameStatus === "taken" || usernameStatus === "invalid") && <XCircle className="h-4 w-4 text-destructive" />}
+                      </div>
+                    </div>
+                    {usernameStatus === "taken" && <p className="text-xs text-destructive">Username already taken</p>}
+                    {usernameStatus === "invalid" && <p className="text-xs text-destructive">3–30 characters, only a-z 0-9 _ -</p>}
+                    {usernameStatus === "available" && <p className="text-xs text-emerald-600">Username is available!</p>}
+                  </div>
+
+                  {/* Visibility toggle */}
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center gap-3">
+                      {portfolio?.is_public
+                        ? <Globe className="h-4 w-4 text-emerald-600" />
+                        : <Lock className="h-4 w-4 text-muted-foreground" />}
+                      <div>
+                        <p className="text-sm font-medium">{portfolio?.is_public ? "Public" : "Private"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {portfolio?.is_public ? "Visible at your public URL" : "Only you can see this portfolio"}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleVisibility}
+                      disabled={updatePortfolio.isPending}
+                    >
+                      {portfolio?.is_public ? "Make Private" : "Make Public"}
+                    </Button>
+                  </div>
+
+                  {/* Portfolio name */}
+                  <div className="space-y-2">
+                    <Label>Portfolio Name</Label>
+                    <Input
+                      value={portfolioNameValue}
+                      onChange={(e) => setPortfolioNameValue(e.target.value)}
+                      placeholder="e.g. My Portfolio"
+                      maxLength={100}
+                    />
+                  </div>
+
+                  {/* Portfolio type */}
+                  <div className="space-y-2">
+                    <Label>Portfolio Type</Label>
+                    <Select value={portfolioTypeValue} onValueChange={setPortfolioTypeValue}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PORTFOLIO_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button onClick={handleSaveSettings} disabled={updatePortfolio.isPending} variant="hero">
+                    <Save className="mr-2 h-4 w-4" /> Save Settings
                   </Button>
                 </div>
               )}
