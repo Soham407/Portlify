@@ -191,6 +191,7 @@ const Dashboard = () => {
           setIsCreateOpen(false);
           setNewName("New Portfolio");
           setNewType("general");
+          navigate(`/builder?portfolio=${created.id}`);
         },
         onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
       }
