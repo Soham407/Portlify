@@ -45,6 +45,7 @@ const Preview = () => {
   const [editMode, setEditMode] = useState(false);
   const [sectionLayouts, setSectionLayouts] = useState<Record<string, string>>({});
   const [activeSidebarSection, setActiveSidebarSection] = useState<string | null>(null);
+  const templateRenderKey = `${templateId}:${JSON.stringify(sectionLayouts)}`;
 
   useEffect(() => {
     if (portfolio?.section_layouts) {
@@ -107,18 +108,20 @@ const Preview = () => {
         </div>
       </div>
 
-      <TemplateComponent
-        bio={bio ?? null}
-        projects={projects ?? []}
-        skills={skills ?? []}
-        experiences={experiences ?? []}
-        education={education ?? []}
-        contact={contact ?? null}
-        certifications={certifications ?? []}
-        sectionLayouts={sectionLayouts}
-        editMode={editMode}
-        onSectionEdit={(section) => setActiveSidebarSection(section)}
-      />
+      <div key={templateRenderKey}>
+        <TemplateComponent
+          bio={bio ?? null}
+          projects={projects ?? []}
+          skills={skills ?? []}
+          experiences={experiences ?? []}
+          education={education ?? []}
+          contact={contact ?? null}
+          certifications={certifications ?? []}
+          sectionLayouts={sectionLayouts}
+          editMode={editMode}
+          onSectionEdit={(section) => setActiveSidebarSection(section)}
+        />
+      </div>
 
       {/* Sticky floating Customize Layout button — bottom right */}
       <button
