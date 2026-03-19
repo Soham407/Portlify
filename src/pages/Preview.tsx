@@ -28,6 +28,7 @@ const Preview = () => {
   const { portfolio, isLoading: portfolioLoading, updateSectionLayouts } = usePortfolio(portfolioParam);
   const portfolioId = portfolio?.id;
   const templateId = portfolio?.template_id ?? "minimal";
+  const dashboardHref = "/dashboard";
   const builderHref = portfolioId ? `/builder?portfolio=${portfolioId}` : "/builder";
 
   const { bio } = useBio(portfolioId);
@@ -65,8 +66,8 @@ const Preview = () => {
           <div className="container flex h-12 items-center justify-between">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild>
-                <Link to={builderHref}>
-                  <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Builder
+                <Link to={dashboardHref}>
+                  <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Dashboard
                 </Link>
               </Button>
             </div>
@@ -90,8 +91,8 @@ const Preview = () => {
         <div className="container flex h-12 items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
-              <Link to={builderHref}>
-                <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Builder
+              <Link to={dashboardHref}>
+                <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Dashboard
               </Link>
             </Button>
           </div>
