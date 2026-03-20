@@ -51,7 +51,7 @@ const Builder = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const requestedPortfolioId = searchParams.get("portfolio") ?? undefined;
-  const { portfolio, isLoading: portfolioLoading, createPortfolio, updatePortfolio } = usePortfolio(requestedPortfolioId);
+  const { portfolio, isLoading: portfolioLoading, createPortfolio, updatePortfolio, updateSectionControls } = usePortfolio(requestedPortfolioId);
   const portfolioId = portfolio?.id;
   const previewHref = portfolioId ? `/preview?portfolio=${portfolioId}` : "/preview";
 
@@ -89,6 +89,9 @@ const Builder = () => {
   const [expForm, setExpForm] = useState({ company_name: "", role_title: "", employment_type: "full-time", start_date: "", end_date: "", description: "", is_current: false });
   const [eduForm, setEduForm] = useState({ institution: "", degree: "", field_of_study: "", graduation_year: "", cgpa: "", description: "" });
   const [certForm, setCertForm] = useState({ name: "", issuer: "", issue_date: "", expiry_date: "", credential_url: "", description: "" });
+  const hiddenSections = new Set(((portfolio?.hidden_sections as string[] | null) || []));
+  const experienceDeferred = hiddenSections.has("experience");
+  const certificationsDeferred = hiddenSections.has("certifications");
 
   useEffect(() => {
     if (bio) {
@@ -332,14 +335,40 @@ const Builder = () => {
     }
   };
 
-  const handleAddExperience = () => {
-    if (!expForm.company_name.trim() || !expForm.role_title.trim()) return;
-    addExperience.mutate(expForm, {
-      onSuccess: () => {
-        setExpForm({ company_name: "", role_title: "", employment_type: "full-time", start_date: "", end_date: "", description: "", is_current: false });
-        toast({ title: "Experience added!" });
-      },
+  const setSectionDeferred = async (section: "experience" | "certifications", deferred: boolean) => {
+    const currentHidden = ((portfolio?.hidden_sections as string[] | null) || []).filter(Boolean);
+    const nextHidden = deferred
+      ? Array.from(new Set([...currentHidden, section]))
+      : currentHidden.filter((entry) => entry !== section);
+
+    await updateSectionControls.mutateAsync({ hidden_sections: nextHidden });
+    toast({
+      title: deferred ? "Section marked as optional for now" : "Section restored",
+      description:
+        deferred
+          ? `We will count ${section} as intentionally omitted until you add it later.`
+          : `${section === "experience" ? "Experience" : "Certifications"} is ready for entries again.`,
     });
+  };
+
+  const ensureSectionVisible = async (section: "experience" | "certifications") => {
+    const currentHidden = ((portfolio?.hidden_sections as string[] | null) || []).filter(Boolean);
+    if (!currentHidden.includes(section)) return;
+    await updateSectionControls.mutateAsync({
+      hidden_sections: currentHidden.filter((entry) => entry !== section),
+    });
+  };
+
+  const handleAddExperience = async () => {
+    if (!expForm.company_name.trim() || !expForm.role_title.trim()) return;
+    try {
+      await ensureSectionVisible("experience");
+      await addExperience.mutateAsync(expForm);
+      setExpForm({ company_name: "", role_title: "", employment_type: "full-time", start_date: "", end_date: "", description: "", is_current: false });
+      toast({ title: "Experience added!" });
+    } catch (error: unknown) {
+      toast({ title: "Could not add experience", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    }
   };
 
   const handleAddEducation = () => {
@@ -352,14 +381,16 @@ const Builder = () => {
     });
   };
 
-  const handleAddCertification = () => {
+  const handleAddCertification = async () => {
     if (!certForm.name.trim()) return;
-    addCertification.mutate(certForm, {
-      onSuccess: () => {
-        setCertForm({ name: "", issuer: "", issue_date: "", expiry_date: "", credential_url: "", description: "" });
-        toast({ title: "Certification added!" });
-      },
-    });
+    try {
+      await ensureSectionVisible("certifications");
+      await addCertification.mutateAsync(certForm);
+      setCertForm({ name: "", issuer: "", issue_date: "", expiry_date: "", credential_url: "", description: "" });
+      toast({ title: "Certification added!" });
+    } catch (error: unknown) {
+      toast({ title: "Could not add certification", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    }
   };
 
   const getSectionCount = (id: Section): number | null => {
@@ -375,6 +406,8 @@ const Builder = () => {
     if (id === "settings") return false;
     if (id === "bio") return !!(bioForm.first_name || bio?.first_name);
     if (id === "contact") return !!(contactForm.email || contact?.email);
+    if (id === "experience" && experienceDeferred) return true;
+    if (id === "certifications" && certificationsDeferred) return true;
     const count = getSectionCount(id);
     return count !== null && count > 0;
   };
@@ -441,6 +474,9 @@ const Builder = () => {
                 const count = getSectionCount(section.id);
                 const filled = sectionFilled(section.id);
                 const isActive = activeSection === section.id;
+                const deferred =
+                  (section.id === "experience" && experienceDeferred) ||
+                  (section.id === "certifications" && certificationsDeferred);
                 return (
                   <button
                     key={section.id}
@@ -455,7 +491,12 @@ const Builder = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-sm font-medium">{section.label}</span>
-                        {count !== null && count > 0 && (
+                        {deferred && (
+                          <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0 ${isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            N/A
+                          </span>
+                        )}
+                        {!deferred && count !== null && count > 0 && (
                           <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0 ${isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
                             {count}
                           </span>
@@ -496,6 +537,9 @@ const Builder = () => {
                     {sections.map((section) => {
                       const filled = sectionFilled(section.id);
                       const isActive = activeSection === section.id;
+                      const deferred =
+                        (section.id === "experience" && experienceDeferred) ||
+                        (section.id === "certifications" && certificationsDeferred);
                       return (
                         <button
                           key={section.id}
@@ -506,6 +550,7 @@ const Builder = () => {
                         >
                           <section.icon className="h-3.5 w-3.5 shrink-0" />
                           <span>{section.label}</span>
+                          {deferred && <span className="ml-auto text-[10px] font-semibold text-muted-foreground">N/A</span>}
                           {filled && <Check className="ml-auto h-3 w-3 text-emerald-500" />}
                         </button>
                       );
@@ -737,6 +782,18 @@ const Builder = () => {
               {/* EXPERIENCE */}
               {activeSection === "experience" && (
                 <div className="space-y-4">
+                  {experienceDeferred && experiences.length === 0 && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                      <p className="font-medium">Experience is marked as not applicable for now.</p>
+                      <p className="mt-1 text-emerald-800">
+                        This section still counts toward Builder progress and stays hidden from your portfolio until you add real experience.
+                      </p>
+                      <Button className="mt-3" variant="outline" size="sm" onClick={() => setSectionDeferred("experience", false)}>
+                        Add Experience Instead
+                      </Button>
+                    </div>
+                  )}
+
                   {experiences.map((exp) => (
                     <div key={exp.id} className="rounded-xl border border-border bg-card p-4">
                       <div className="flex items-start justify-between">
@@ -755,6 +812,14 @@ const Builder = () => {
 
                   <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-5 space-y-3">
                     <h3 className="text-sm font-semibold flex items-center gap-2"><Plus className="h-4 w-4" /> Add Experience</h3>
+                    {experiences.length === 0 && !experienceDeferred && (
+                      <div className="rounded-lg border border-border/80 bg-background p-3 text-xs text-muted-foreground">
+                        <p>New students and early-career users may not have formal experience yet.</p>
+                        <Button className="mt-2" variant="outline" size="sm" onClick={() => setSectionDeferred("experience", true)}>
+                          Mark as Not Applicable for Now
+                        </Button>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                       <Input placeholder="Company name *" value={expForm.company_name} onChange={(e) => setExpForm({ ...expForm, company_name: e.target.value })} maxLength={100} />
                       <Input placeholder="Role title *" value={expForm.role_title} onChange={(e) => setExpForm({ ...expForm, role_title: e.target.value })} maxLength={100} />
@@ -789,6 +854,7 @@ const Builder = () => {
 
                   <LinkedInImport
                     onImportExperiences={async (exps) => {
+                      await ensureSectionVisible("experience");
                       for (const exp of exps) {
                         await addExperience.mutateAsync({
                           company_name: exp.company_name,
@@ -822,6 +888,7 @@ const Builder = () => {
                       }
                     }}
                     onImportCertifications={async (entries) => {
+                      await ensureSectionVisible("certifications");
                       for (const entry of entries) {
                         await addCertification.mutateAsync({
                           name: entry.name,
@@ -902,6 +969,18 @@ const Builder = () => {
               {/* CERTIFICATIONS */}
               {activeSection === "certifications" && (
                 <div className="space-y-4">
+                  {certificationsDeferred && certifications.length === 0 && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                      <p className="font-medium">Certifications are marked as not applicable for now.</p>
+                      <p className="mt-1 text-emerald-800">
+                        This section still counts toward Builder progress and stays hidden from your portfolio until you add credentials later.
+                      </p>
+                      <Button className="mt-3" variant="outline" size="sm" onClick={() => setSectionDeferred("certifications", false)}>
+                        Add Certifications Instead
+                      </Button>
+                    </div>
+                  )}
+
                   {certifications.map((cert: any) => (
                     <div key={cert.id} className="rounded-xl border border-border bg-card p-4">
                       <div className="flex items-start justify-between">
@@ -927,6 +1006,14 @@ const Builder = () => {
 
                   <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-5 space-y-3">
                     <h3 className="text-sm font-semibold flex items-center gap-2"><Plus className="h-4 w-4" /> Add Certification</h3>
+                    {certifications.length === 0 && !certificationsDeferred && (
+                      <div className="rounded-lg border border-border/80 bg-background p-3 text-xs text-muted-foreground">
+                        <p>If you do not hold certifications yet, you can intentionally leave this section out for now.</p>
+                        <Button className="mt-2" variant="outline" size="sm" onClick={() => setSectionDeferred("certifications", true)}>
+                          Mark as Not Applicable for Now
+                        </Button>
+                      </div>
+                    )}
                     <Input placeholder="Certification name *" value={certForm.name} onChange={(e) => setCertForm({ ...certForm, name: e.target.value })} maxLength={150} />
                     <Input placeholder="Issuer (e.g. AWS, Google)" value={certForm.issuer} onChange={(e) => setCertForm({ ...certForm, issuer: e.target.value })} maxLength={100} />
                     <div className="grid grid-cols-2 gap-2">
