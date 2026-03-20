@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Briefcase, Check, Github, Linkedin, Loader2, Sparkles, Upload, Wand2 } from "lucide-react";
+import { ArrowRight, Briefcase, Check, Github, Linkedin, Loader2, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -617,77 +617,107 @@ const Onboarding = () => {
     <div className="min-h-screen bg-background">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary-glow)/0.16),_transparent_28%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--surface)))]" />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-        <div className="grid w-full gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-6">
-          <aside className="glass hidden rounded-[32px] p-6 shadow-card lg:block lg:p-7">
-            <div className="mb-8 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow">
-                <Briefcase className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-primary">PortfolioBuilder</p>
-                <h1 className="text-2xl font-bold tracking-tight">Let&apos;s shape your portfolio</h1>
-              </div>
-            </div>
+      <div className="relative mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-10">
+        <div className="grid w-full gap-5 xl:grid-cols-[268px_minmax(0,1fr)] xl:gap-8">
+          <aside className="hidden xl:block">
+            <div className="sticky top-6 space-y-4">
+              <div className="glass rounded-[30px] p-5 shadow-card">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow">
+                    <Briefcase className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-primary">PortfolioBuilder</p>
+                    <h1 className="mt-1 text-[28px] font-bold leading-[1.1] tracking-tight">Shape your portfolio</h1>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      A fast setup flow that gets you into Builder with a strong starting point.
+                    </p>
+                  </div>
+                </div>
 
-            <div className="space-y-4">
-              {steps.map((step, index) => {
-                const active = index === stepIndex;
-                const done = index < stepIndex;
+                <div className="mt-5 rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    <span>Progress</span>
+                    <span>{stepIndex + 1} of {steps.length}</span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-gradient-primary transition-all duration-300"
+                      style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
 
-                return (
-                  <div
-                    key={step.id}
-                    className={`rounded-3xl border p-4 transition-all ${
-                      active
-                        ? "border-primary/40 bg-primary/10 shadow-[0_20px_60px_-35px_hsl(var(--primary)/0.6)]"
-                        : "border-border/80 bg-background/70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
+              <div className="glass rounded-[30px] p-4 shadow-card">
+                <div className="space-y-2">
+                  {steps.map((step, index) => {
+                    const active = index === stepIndex;
+                    const done = index < stepIndex;
+
+                    return (
                       <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${
-                          done
-                            ? "bg-emerald-400 text-slate-950"
-                            : active
-                              ? "bg-gradient-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
+                        key={step.id}
+                        className={`rounded-2xl border px-3 py-3 transition-all ${
+                          active
+                            ? "border-primary/35 bg-primary/10 shadow-[0_20px_55px_-40px_hsl(var(--primary)/0.65)]"
+                            : done
+                              ? "border-emerald-200/80 bg-emerald-50/60"
+                              : "border-border/70 bg-background/65"
                         }`}
                       >
-                        {done ? <Check className="h-4 w-4" /> : index + 1}
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                              done
+                                ? "bg-emerald-400 text-slate-950"
+                                : active
+                                  ? "bg-gradient-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {done ? <Check className="h-4 w-4" /> : index + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Step {index + 1}</p>
+                            <p className="text-sm font-medium leading-5">{step.title}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step {index + 1}</p>
-                        <p className="font-medium">{step.title}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 rounded-[28px] border border-primary/15 bg-gradient-hero p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold">What you&apos;ll get</p>
+                    );
+                  })}
+                </div>
               </div>
 
-              <ul className="space-y-2.5 text-sm text-muted-foreground">
-                <li>Starter structure tailored to your goal</li>
-                <li>Recommended template and section order</li>
-                <li>Optional placeholder content to edit fast</li>
-              </ul>
+              <div className="rounded-[28px] border border-primary/15 bg-gradient-hero p-4 shadow-card">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">What this setup gives you</p>
+                </div>
 
-              <div className="mt-5 rounded-2xl border border-border/70 bg-background/80 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Current pick</p>
-                <p className="mt-2 font-semibold">{selectedTemplate.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{selectedTemplate.description}</p>
+                <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2.5">
+                    Tailored starter structure for your goal and stage.
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2.5">
+                    Recommended template and section order to edit from.
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2.5">
+                    Optional imported or starter content so Builder feels fast.
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-border/70 bg-background/90 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Current template</p>
+                  <p className="mt-2 font-semibold">{selectedTemplate.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{selectedTemplate.description}</p>
+                </div>
               </div>
             </div>
           </aside>
 
-          <main className="glass min-w-0 rounded-[28px] p-4 shadow-card sm:rounded-[32px] sm:p-6 lg:p-10">
-            <div className="mb-6 space-y-4 border-b border-border/70 pb-5 lg:hidden">
+          <main className="glass min-w-0 rounded-[28px] p-4 shadow-card sm:rounded-[32px] sm:p-6 lg:p-8 xl:p-10">
+            <div className="mb-6 space-y-4 border-b border-border/70 pb-5 xl:hidden">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow">
                   <Briefcase className="h-4 w-4" />
@@ -736,26 +766,27 @@ const Onboarding = () => {
               key={stepIndex}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mx-auto flex w-full max-w-3xl flex-col"
+              className="mx-auto flex w-full max-w-5xl flex-col"
             >
-              <div className="mb-6 flex flex-col gap-5 border-b border-border/70 pb-5 sm:mb-8 sm:pb-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="mb-6 grid gap-4 border-b border-border/70 pb-5 sm:mb-8 sm:pb-6 xl:grid-cols-[minmax(0,1fr)_220px] xl:items-end">
                 <div>
                   <p className="text-sm font-semibold text-primary">{stepCopy[stepIndex].eyebrow}</p>
-                  <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">{stepCopy[stepIndex].title}</h2>
+                  <h2 className="mt-2 max-w-3xl text-2xl font-bold tracking-tight sm:text-3xl xl:text-[2.85rem] xl:leading-[1.02]">{stepCopy[stepIndex].title}</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{stepCopy[stepIndex].description}</p>
                 </div>
 
-                <div className="w-full sm:max-w-[180px]">
-                  <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="hidden rounded-[24px] border border-border/70 bg-background/70 p-4 xl:block">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     <span>Progress</span>
                     <span>{stepIndex + 1}/4</span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted">
+                  <div className="mt-3 h-2 rounded-full bg-muted">
                     <div
                       className="h-2 rounded-full bg-gradient-primary transition-all duration-300"
                       style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
                     />
                   </div>
+                  <p className="mt-3 text-sm text-muted-foreground">{steps[stepIndex].title}</p>
                 </div>
               </div>
 
