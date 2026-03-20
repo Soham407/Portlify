@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Briefcase, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Briefcase, Check, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,11 +33,38 @@ const steps = [
   { id: "finish", title: "Give it a quick shape" },
 ] as const;
 
-const generateShareToken = () => (
+const stepCopy = [
+  {
+    eyebrow: "Foundation",
+    title: "Tell us where you are right now",
+    description: "We will tune your starting sections, tone, and defaults around your current stage.",
+  },
+  {
+    eyebrow: "Goal",
+    title: "What should this portfolio help you do?",
+    description: "Your goal influences section order, starter messaging, and the recommended visual style.",
+  },
+  {
+    eyebrow: "Starting Point",
+    title: "Choose how we set you up",
+    description: "Pick the fastest path now. You can still import, edit, and rearrange everything later.",
+  },
+  {
+    eyebrow: "Visual Direction",
+    title: "Pick your starting template",
+    description: "We still suggest one based on your goal, but you stay in control of the starting look.",
+  },
+] as const;
+
+const generateShareToken = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(18)))
     .map((value) => value.toString(16).padStart(2, "0"))
-    .join("")
-);
+    .join("");
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  return "Something went wrong while setting up your portfolio.";
+};
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -82,6 +109,11 @@ const Onboarding = () => {
     return CAREER_TYPES[form.user_type as keyof typeof CAREER_TYPES] || CAREER_TYPES.fresher;
   }, [form.user_type]);
 
+  const selectedTemplate = useMemo(
+    () => TEMPLATES.find((template) => template.id === form.preferred_template) ?? TEMPLATES[0],
+    [form.preferred_template],
+  );
+
   if (!user || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -91,11 +123,20 @@ const Onboarding = () => {
   }
 
   const canContinue = () => {
-    if (stepIndex === 0) return !!form.user_type && !!form.career_type && !!form.skill_level && !!form.selected_role.trim();
+    if (stepIndex === 0) {
+      return !!form.user_type && !!form.career_type && !!form.skill_level && !!form.selected_role.trim();
+    }
     if (stepIndex === 1) return !!form.portfolio_goal;
     if (stepIndex === 2) return !!form.import_intent && !!form.starter_content_mode;
     return !!form.preferred_template;
   };
+
+  const cardClass = (active: boolean) =>
+    `rounded-3xl border p-5 text-left transition-all duration-200 ${
+      active
+        ? "border-primary/50 bg-primary/10 shadow-[0_20px_60px_-30px_hsl(var(--primary)/0.55)]"
+        : "border-border/80 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
+    }`;
 
   const handleFinish = async () => {
     if (!user) return;
@@ -106,7 +147,11 @@ const Onboarding = () => {
       const templateId = getTemplateForGoal(form.portfolio_goal, form.preferred_template);
       const starterBio = getStarterBio(form);
       const starterProjects = getStarterProjects(form);
-      const starterExperiences = getStarterExperiences(form);
+      const starterExperiences = getStarterExperiences(form).map((experience) => ({
+        ...experience,
+        start_date: experience.start_date || null,
+        end_date: experience.end_date || null,
+      }));
 
       const { error: profileError } = await supabase
         .from("profiles")
@@ -153,11 +198,22 @@ const Onboarding = () => {
         portfolioId = portfolio.id;
       }
 
-      const { data: existingBio } = await supabase
+      const { error: portfolioUpdateError } = await supabase
+        .from("portfolios")
+        .update({
+          template_id: templateId,
+          section_order: starterOrder,
+        })
+        .eq("id", portfolioId);
+      if (portfolioUpdateError) throw portfolioUpdateError;
+
+      const { data: existingBio, error: existingBioError } = await supabase
         .from("bio_sections")
         .select("id")
         .eq("portfolio_id", portfolioId)
         .maybeSingle();
+      if (existingBioError) throw existingBioError;
+
       if (!existingBio) {
         const names = (profile?.full_name || "").trim().split(/\s+/).filter(Boolean);
         const { error: bioError } = await supabase.from("bio_sections").insert({
@@ -172,11 +228,13 @@ const Onboarding = () => {
       }
 
       if (starterProjects.length > 0) {
-        const { data: existingProjects } = await supabase
+        const { data: existingProjects, error: existingProjectsError } = await supabase
           .from("portfolio_projects")
           .select("id")
           .eq("portfolio_id", portfolioId)
           .limit(1);
+        if (existingProjectsError) throw existingProjectsError;
+
         if (!existingProjects || existingProjects.length === 0) {
           const { error: projectError } = await supabase.from("portfolio_projects").insert(
             starterProjects.map((project, index) => ({
@@ -184,18 +242,20 @@ const Onboarding = () => {
               portfolio_id: portfolioId,
               user_id: user.id,
               display_order: index,
-            }))
+            })),
           );
           if (projectError) throw projectError;
         }
       }
 
       if (starterExperiences.length > 0) {
-        const { data: existingExperiences } = await supabase
+        const { data: existingExperiences, error: existingExperiencesError } = await supabase
           .from("experiences")
           .select("id")
           .eq("portfolio_id", portfolioId)
           .limit(1);
+        if (existingExperiencesError) throw existingExperiencesError;
+
         if (!existingExperiences || existingExperiences.length === 0) {
           const { error: experienceError } = await supabase.from("experiences").insert(
             starterExperiences.map((experience, index) => ({
@@ -203,7 +263,7 @@ const Onboarding = () => {
               portfolio_id: portfolioId,
               user_id: user.id,
               display_order: index,
-            }))
+            })),
           );
           if (experienceError) throw experienceError;
         }
@@ -211,26 +271,27 @@ const Onboarding = () => {
 
       toast({ title: "Portfolio setup complete", description: "Your builder is ready with the right defaults." });
       navigate("/dashboard", { replace: true });
-    } catch (error: any) {
-      toast({ title: "Onboarding failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Onboarding failed", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col lg:flex-row">
-        <aside className="relative overflow-hidden bg-slate-950 px-8 py-10 text-slate-50 lg:w-[420px]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.35),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.2),_transparent_30%)]" />
-          <div className="relative">
+    <div className="min-h-screen overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary-glow)/0.16),_transparent_28%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--surface)))]" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-4 py-6 sm:px-6 lg:px-8">
+        <div className="grid w-full gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="glass rounded-[32px] p-6 shadow-card sm:p-7">
             <div className="mb-8 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow">
                 <Briefcase className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-slate-300">PortfolioBuilder</p>
-                <h1 className="text-2xl font-semibold">Let&apos;s shape your portfolio</h1>
+                <p className="text-sm font-medium text-primary">PortfolioBuilder</p>
+                <h1 className="text-2xl font-bold tracking-tight">Let&apos;s shape your portfolio</h1>
               </div>
             </div>
 
@@ -238,14 +299,30 @@ const Onboarding = () => {
               {steps.map((step, index) => {
                 const active = index === stepIndex;
                 const done = index < stepIndex;
+
                 return (
-                  <div key={step.id} className={`rounded-2xl border p-4 ${active ? "border-sky-300/40 bg-white/10" : "border-white/10 bg-white/5"}`}>
+                  <div
+                    key={step.id}
+                    className={`rounded-3xl border p-4 transition-all ${
+                      active
+                        ? "border-primary/40 bg-primary/10 shadow-[0_20px_60px_-35px_hsl(var(--primary)/0.6)]"
+                        : "border-border/80 bg-background/70"
+                    }`}
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm ${done ? "bg-emerald-400 text-slate-950" : active ? "bg-sky-300 text-slate-950" : "bg-white/10 text-slate-200"}`}>
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${
+                          done
+                            ? "bg-emerald-400 text-slate-950"
+                            : active
+                              ? "bg-gradient-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                        }`}
+                      >
                         {done ? <Check className="h-4 w-4" /> : index + 1}
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Step {index + 1}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step {index + 1}</p>
                         <p className="font-medium">{step.title}</p>
                       </div>
                     </div>
@@ -254,33 +331,56 @@ const Onboarding = () => {
               })}
             </div>
 
-            <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-5">
-              <p className="text-sm font-medium">What you&apos;ll get</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+            <div className="mt-8 rounded-[28px] border border-primary/15 bg-gradient-hero p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Wand2 className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">What you&apos;ll get</p>
+              </div>
+
+              <ul className="space-y-2.5 text-sm text-muted-foreground">
                 <li>Starter structure tailored to your goal</li>
                 <li>Recommended template and section order</li>
                 <li>Optional placeholder content to edit fast</li>
               </ul>
-            </div>
-          </div>
-        </aside>
 
-        <main className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10">
-          <motion.div
-            key={stepIndex}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-2xl rounded-[28px] border border-border bg-card p-8 shadow-card"
-          >
-            {stepIndex === 0 && (
-              <div className="space-y-8">
+              <div className="mt-5 rounded-2xl border border-border/70 bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Current pick</p>
+                <p className="mt-2 font-semibold">{selectedTemplate.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{selectedTemplate.description}</p>
+              </div>
+            </div>
+          </aside>
+
+          <main className="glass rounded-[32px] p-6 shadow-card sm:p-8 lg:p-10">
+            <motion.div
+              key={stepIndex}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mx-auto flex w-full max-w-3xl flex-col"
+            >
+              <div className="mb-8 flex flex-col gap-5 border-b border-border/70 pb-6 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-sm font-medium text-primary">Foundation</p>
-                  <h2 className="mt-2 text-3xl font-semibold">Tell us where you are right now</h2>
-                  <p className="mt-2 text-muted-foreground">We&apos;ll use this to prioritize sections and seed a better starting portfolio.</p>
+                  <p className="text-sm font-semibold text-primary">{stepCopy[stepIndex].eyebrow}</p>
+                  <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{stepCopy[stepIndex].title}</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{stepCopy[stepIndex].description}</p>
                 </div>
 
-                <div className="space-y-6">
+                <div className="w-full max-w-[180px]">
+                  <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <span>Progress</span>
+                    <span>{stepIndex + 1}/4</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-gradient-primary transition-all duration-300"
+                      style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {stepIndex === 0 && (
+                <div className="space-y-8">
                   <div>
                     <p className="mb-3 text-sm font-medium">User Type</p>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -289,9 +389,9 @@ const Onboarding = () => {
                           key={type.value}
                           type="button"
                           onClick={() => setForm((current) => ({ ...current, user_type: type.value }))}
-                          className={`rounded-2xl border p-4 text-left transition-all ${form.user_type === type.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                          className={cardClass(form.user_type === type.value)}
                         >
-                          <p className="font-medium">{type.label}</p>
+                          <p className="font-semibold">{type.label}</p>
                           <p className="mt-1 text-sm text-muted-foreground">{type.description}</p>
                         </button>
                       ))}
@@ -306,9 +406,9 @@ const Onboarding = () => {
                           key={career}
                           type="button"
                           onClick={() => setForm((current) => ({ ...current, career_type: career }))}
-                          className={`rounded-2xl border p-4 text-left transition-all ${form.career_type === career ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                          className={cardClass(form.career_type === career)}
                         >
-                          <p className="font-medium">{career}</p>
+                          <p className="font-semibold">{career}</p>
                         </button>
                       ))}
                     </div>
@@ -322,159 +422,142 @@ const Onboarding = () => {
                           key={level.value}
                           type="button"
                           onClick={() => setForm((current) => ({ ...current, skill_level: level.value }))}
-                          className={`rounded-2xl border p-4 text-left transition-all ${form.skill_level === level.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                          className={cardClass(form.skill_level === level.value)}
                         >
-                          <p className="font-medium">{level.label}</p>
+                          <p className="font-semibold">{level.label}</p>
                           <p className="mt-1 text-sm text-muted-foreground">{level.description}</p>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div>
+                  <div className="rounded-[28px] border border-border/80 bg-background/80 p-5">
                     <label className="mb-2 block text-sm font-medium">Role</label>
                     <Input
                       value={form.selected_role}
                       onChange={(event) => setForm((current) => ({ ...current, selected_role: event.target.value }))}
                       placeholder="e.g. Frontend Developer"
                       maxLength={60}
+                      className="h-12 rounded-2xl border-border/80 bg-background/90"
                     />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {stepIndex === 1 && (
-              <div className="space-y-8">
-                <div>
-                  <p className="text-sm font-medium text-primary">Goal</p>
-                  <h2 className="mt-2 text-3xl font-semibold">What should this portfolio help you do?</h2>
-                  <p className="mt-2 text-muted-foreground">This affects the default order, messaging, and recommended template.</p>
-                </div>
-
+              {stepIndex === 1 && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {PORTFOLIO_GOALS.map((goal) => (
                     <button
                       key={goal.value}
                       type="button"
                       onClick={() => setForm((current) => ({ ...current, portfolio_goal: goal.value }))}
-                      className={`rounded-3xl border p-5 text-left transition-all ${form.portfolio_goal === goal.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                      className={cardClass(form.portfolio_goal === goal.value)}
                     >
-                      <p className="font-medium">{goal.label}</p>
+                      <p className="font-semibold">{goal.label}</p>
                       <p className="mt-2 text-sm text-muted-foreground">{goal.description}</p>
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {stepIndex === 2 && (
-              <div className="space-y-8">
-                <div>
-                  <p className="text-sm font-medium text-primary">Starting Point</p>
-                  <h2 className="mt-2 text-3xl font-semibold">Choose how we set you up</h2>
-                  <p className="mt-2 text-muted-foreground">You can still import or edit everything later in the builder.</p>
-                </div>
-
-                <div>
-                  <p className="mb-3 text-sm font-medium">Import Intent</p>
-                  <div className="grid gap-4">
-                    {IMPORT_INTENTS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setForm((current) => ({ ...current, import_intent: option.value }))}
-                        className={`rounded-2xl border p-5 text-left transition-all ${form.import_intent === option.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
-                      >
-                        <p className="font-medium">{option.label}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{option.description}</p>
-                      </button>
-                    ))}
+              {stepIndex === 2 && (
+                <div className="space-y-8">
+                  <div>
+                    <p className="mb-3 text-sm font-medium">Import Intent</p>
+                    <div className="grid gap-4">
+                      {IMPORT_INTENTS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setForm((current) => ({ ...current, import_intent: option.value }))}
+                          className={cardClass(form.import_intent === option.value)}
+                        >
+                          <p className="font-semibold">{option.label}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{option.description}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <p className="mb-3 text-sm font-medium">Starter Content</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {STARTER_CONTENT_MODES.map((mode) => (
-                      <button
-                        key={mode.value}
-                        type="button"
-                        onClick={() => setForm((current) => ({ ...current, starter_content_mode: mode.value }))}
-                        className={`rounded-2xl border p-5 text-left transition-all ${form.starter_content_mode === mode.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
-                      >
-                        <p className="font-medium">{mode.label}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{mode.description}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {stepIndex === 3 && (
-              <div className="space-y-8">
-                <div>
-                  <p className="text-sm font-medium text-primary">Visual Direction</p>
-                  <h2 className="mt-2 text-3xl font-semibold">Pick your starting template</h2>
-                  <p className="mt-2 text-muted-foreground">We’ll still recommend one based on your goal, but you can start anywhere.</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => setForm((current) => ({ ...current, preferred_template: template.id }))}
-                      className={`rounded-3xl border p-5 text-left transition-all ${form.preferred_template === template.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium">{template.name}</p>
-                        {form.preferred_template === template.id && (
-                          <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">Selected</span>
-                        )}
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">{template.description}</p>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="rounded-3xl border border-border bg-muted/30 p-5">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-medium">What we’ll create</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        A private starter portfolio with your recommended section order, a seeded bio, and starter entries if you chose prefilled mode.
-                      </p>
+                  <div>
+                    <p className="mb-3 text-sm font-medium">Starter Content</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {STARTER_CONTENT_MODES.map((mode) => (
+                        <button
+                          key={mode.value}
+                          type="button"
+                          onClick={() => setForm((current) => ({ ...current, starter_content_mode: mode.value }))}
+                          className={cardClass(form.starter_content_mode === mode.value)}
+                        >
+                          <p className="font-semibold">{mode.label}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{mode.description}</p>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            <div className="mt-10 flex items-center justify-between gap-4">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
-                disabled={stepIndex === 0 || isSaving}
-              >
-                Back
-              </Button>
-
-              {stepIndex < steps.length - 1 ? (
-                <Button type="button" variant="hero" onClick={() => setStepIndex((current) => current + 1)} disabled={!canContinue()}>
-                  Continue <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button type="button" variant="hero" onClick={handleFinish} disabled={!canContinue() || isSaving}>
-                  {isSaving ? "Creating your portfolio..." : "Finish Setup"}
-                </Button>
               )}
-            </div>
-          </motion.div>
-        </main>
+
+              {stepIndex === 3 && (
+                <div className="space-y-8">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {TEMPLATES.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, preferred_template: template.id }))}
+                        className={cardClass(form.preferred_template === template.id)}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold">{template.name}</p>
+                          {form.preferred_template === template.id && (
+                            <span className="rounded-full bg-gradient-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">{template.description}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="rounded-[28px] border border-primary/15 bg-gradient-hero p-5">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-semibold">What we&apos;ll create</p>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          A private starter portfolio with your section order, seeded bio, and starter entries if you chose prefilled mode.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-10 flex items-center justify-between gap-4 border-t border-border/70 pt-6">
+                <Button
+                  type="button"
+                  variant="hero-outline"
+                  onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
+                  disabled={stepIndex === 0 || isSaving}
+                >
+                  Back
+                </Button>
+
+                {stepIndex < steps.length - 1 ? (
+                  <Button type="button" variant="hero" onClick={() => setStepIndex((current) => current + 1)} disabled={!canContinue()}>
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="button" variant="hero" onClick={handleFinish} disabled={!canContinue() || isSaving}>
+                    {isSaving ? "Creating your portfolio..." : "Finish Setup"}
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          </main>
+        </div>
       </div>
     </div>
   );
