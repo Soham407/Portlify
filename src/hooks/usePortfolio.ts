@@ -111,7 +111,7 @@ export const usePortfolio = (specificPortfolioId?: string) => {
         .from("portfolios")
         .insert({
           user_id: user!.id,
-          name: opts?.name || "My Portfolio",
+          name: opts?.name || "My Professional Portfolio",
           portfolio_type: opts?.portfolio_type || "general",
           is_default: isFirst,
           visibility: "private",

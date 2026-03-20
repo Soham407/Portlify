@@ -430,7 +430,7 @@ const Onboarding = () => {
           .from("portfolios")
           .insert({
             user_id: user.id,
-            name: "My Portfolio",
+            name: "My Professional Portfolio",
             portfolio_type: "general",
             template_id: templateId,
             is_default: true,
@@ -845,7 +845,7 @@ const Onboarding = () => {
                     <Input
                       value={form.selected_role}
                       onChange={(event) => setForm((current) => ({ ...current, selected_role: event.target.value }))}
-                      placeholder="e.g. Frontend Developer"
+                      placeholder="e.g. Software Developer"
                       maxLength={60}
                       className="h-12 rounded-2xl border-border/80 bg-background/90"
                     />
@@ -908,7 +908,7 @@ const Onboarding = () => {
                           </p>
                           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                             <Input
-                              placeholder="GitHub username"
+                              placeholder="Enter your GitHub username"
                               value={githubUsername}
                               onChange={(event) => setGithubUsername(event.target.value)}
                               onKeyDown={(event) => event.key === "Enter" && handleFetchGithub()}

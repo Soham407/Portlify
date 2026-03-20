@@ -256,7 +256,7 @@ const Dashboard = () => {
     const url = portfolio?.visibility === "unlisted"
       ? `${window.location.origin}/share/${portfolio.share_token}`
       : `${window.location.origin}/p/${profile?.username}${portfolio?.share_token ? `/${portfolio.share_token}` : ""}`;
-    await navigator.share({ title: "My Portfolio", url });
+    await navigator.share({ title: "My Professional Portfolio", url });
   };
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "there";
@@ -395,7 +395,7 @@ const Dashboard = () => {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Portfolio Name</Label>
-                    <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Job Application Portfolio" />
+                    <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Software Engineer Portfolio" />
                   </div>
                   <div className="space-y-2">
                     <Label>Portfolio Type</Label>

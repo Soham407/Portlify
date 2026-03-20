@@ -99,7 +99,7 @@ const SOPGenerator = () => {
             <div className="space-y-2">
               <Label>Purpose / Career Goal</Label>
               <Input
-                placeholder="e.g. Pursuing MS in Computer Science, applying for a data scientist role..."
+                placeholder="e.g. Applying for an M.Tech in Computer Science or a software engineer role..."
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
               />
@@ -108,7 +108,7 @@ const SOPGenerator = () => {
             <div className="space-y-2">
               <Label>Target Program / Institution (optional)</Label>
               <Input
-                placeholder="e.g. Stanford University, Google AI Residency..."
+                placeholder="e.g. IIT Bombay, IISc Bengaluru, TCS Research..."
                 value={targetProgram}
                 onChange={(e) => setTargetProgram(e.target.value)}
               />

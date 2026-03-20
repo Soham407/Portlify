@@ -33,7 +33,7 @@ const RoleSelection = () => {
       if (!existing) {
         const { error: portError } = await supabase
           .from("portfolios")
-          .insert({ user_id: user.id, is_default: true, name: "My Portfolio" });
+          .insert({ user_id: user.id, is_default: true, name: "My Professional Portfolio" });
         if (portError) throw portError;
       }
       navigate("/dashboard");
@@ -54,7 +54,7 @@ const RoleSelection = () => {
         <div className="space-y-2">
           <label className="block text-sm font-medium">Role</label>
           <Input
-            placeholder="e.g. Frontend Developer"
+            placeholder="e.g. Software Developer"
             value={role}
             onChange={(e) => setRole(e.target.value)}
             maxLength={50}

@@ -606,7 +606,7 @@ const Builder = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Headline</Label>
-                    <Input value={bioForm.headline} onChange={(e) => setBioForm({ ...bioForm, headline: e.target.value })} placeholder="e.g. Full Stack Developer" maxLength={150} />
+                    <Input value={bioForm.headline} onChange={(e) => setBioForm({ ...bioForm, headline: e.target.value })} placeholder="e.g. Software Developer" maxLength={150} />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -622,7 +622,7 @@ const Builder = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Location</Label>
-                    <Input value={bioForm.location} onChange={(e) => setBioForm({ ...bioForm, location: e.target.value })} placeholder="e.g. San Francisco, CA" maxLength={100} />
+                    <Input value={bioForm.location} onChange={(e) => setBioForm({ ...bioForm, location: e.target.value })} placeholder="e.g. Bengaluru, Karnataka" maxLength={100} />
                   </div>
                   <Button onClick={handleSaveBio} disabled={saveBio.isPending} variant="hero">
                     <Save className="mr-2 h-4 w-4" /> {saveBio.isPending ? "Saving..." : "Save Bio"}
@@ -680,7 +680,7 @@ const Builder = () => {
                       </div>
                       <div className="flex gap-2">
                         <Input
-                          placeholder="GitHub username"
+                          placeholder="Enter your GitHub username"
                           value={githubUsername}
                           onChange={(e) => setGithubUsername(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleFetchGithub()}
@@ -1015,7 +1015,7 @@ const Builder = () => {
                       </div>
                     )}
                     <Input placeholder="Certification name *" value={certForm.name} onChange={(e) => setCertForm({ ...certForm, name: e.target.value })} maxLength={150} />
-                    <Input placeholder="Issuer (e.g. AWS, Google)" value={certForm.issuer} onChange={(e) => setCertForm({ ...certForm, issuer: e.target.value })} maxLength={100} />
+                    <Input placeholder="Issuer (e.g. Infosys, TCS, Google)" value={certForm.issuer} onChange={(e) => setCertForm({ ...certForm, issuer: e.target.value })} maxLength={100} />
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <Label className="text-xs">Issue Date</Label>
@@ -1087,7 +1087,7 @@ const Builder = () => {
                       <Input
                         value={usernameValue}
                         onChange={(e) => handleUsernameChange(e.target.value.toLowerCase())}
-                        placeholder="e.g. johndoe"
+                        placeholder="Choose your username"
                         maxLength={VALIDATION_RULES.USERNAME.MAX_LENGTH}
                         className="pr-9"
                       />
@@ -1139,7 +1139,7 @@ const Builder = () => {
                     <Input
                       value={portfolioNameValue}
                       onChange={(e) => setPortfolioNameValue(e.target.value)}
-                      placeholder="e.g. My Portfolio"
+                      placeholder="e.g. My Professional Portfolio"
                       maxLength={100}
                     />
                   </div>
