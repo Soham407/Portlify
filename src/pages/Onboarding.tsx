@@ -29,6 +29,7 @@ import {
 } from "@/lib/onboarding";
 import {
   fetchGithubProjects,
+  normalizeImportedDate,
   parseLinkedInPdf,
   type GithubProject,
   type ParsedCertification,
@@ -363,8 +364,8 @@ const Onboarding = () => {
               company_name: experience.company_name,
               role_title: experience.role_title,
               employment_type: experience.employment_type || "full-time",
-              start_date: experience.start_date || null,
-              end_date: experience.end_date || null,
+              start_date: normalizeImportedDate(experience.start_date) || null,
+              end_date: normalizeImportedDate(experience.end_date) || null,
               is_current: experience.is_current || false,
               description: experience.description || "",
             }))
@@ -380,8 +381,8 @@ const Onboarding = () => {
       const certificationsToCreate = selectedImportedCertifications.map((entry: ParsedCertification) => ({
         name: sanitizeText(entry.name).slice(0, 100),
         issuer: entry.issuer ? sanitizeText(entry.issuer).slice(0, 100) : "",
-        issue_date: entry.issue_date ? sanitizeText(entry.issue_date).slice(0, 7) : null,
-        expiry_date: entry.expiry_date ? sanitizeText(entry.expiry_date).slice(0, 7) : null,
+        issue_date: normalizeImportedDate(entry.issue_date) || null,
+        expiry_date: normalizeImportedDate(entry.expiry_date) || null,
         credential_url: entry.credential_url ? sanitizeUrl(entry.credential_url) : null,
         description: entry.description ? sanitizeText(entry.description).slice(0, 300) : null,
       }));

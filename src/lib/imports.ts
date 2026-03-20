@@ -107,3 +107,14 @@ export const fetchGithubProjects = async (username: string): Promise<GithubProje
 
   return (data?.projects || []) as GithubProject[];
 };
+
+export const normalizeImportedDate = (value?: string | null): string => {
+  if (!value) return "";
+
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  if (/^\d{4}-\d{2}$/.test(trimmed)) return `${trimmed}-01`;
+  if (/^\d{4}$/.test(trimmed)) return `${trimmed}-01-01`;
+
+  return "";
+};

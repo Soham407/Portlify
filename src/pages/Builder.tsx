@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { VALIDATION_RULES, EMPLOYMENT_TYPES, PORTFOLIO_TYPES, VISIBILITY_OPTIONS } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { type ParsedContact } from "@/lib/imports";
+import { normalizeImportedDate, type ParsedContact } from "@/lib/imports";
 
 type Section = "bio" | "projects" | "skills" | "experience" | "education" | "certifications" | "contact" | "settings";
 
@@ -794,8 +794,8 @@ const Builder = () => {
                           company_name: exp.company_name,
                           role_title: exp.role_title,
                           employment_type: exp.employment_type || "full-time",
-                          start_date: exp.start_date || "",
-                          end_date: exp.end_date || "",
+                          start_date: normalizeImportedDate(exp.start_date),
+                          end_date: normalizeImportedDate(exp.end_date),
                           is_current: exp.is_current || false,
                           description: exp.description || "",
                         });
@@ -826,8 +826,8 @@ const Builder = () => {
                         await addCertification.mutateAsync({
                           name: entry.name,
                           issuer: entry.issuer || "",
-                          issue_date: entry.issue_date || "",
-                          expiry_date: entry.expiry_date || "",
+                          issue_date: normalizeImportedDate(entry.issue_date),
+                          expiry_date: normalizeImportedDate(entry.expiry_date),
                           credential_url: entry.credential_url || "",
                           description: entry.description || "",
                         });
