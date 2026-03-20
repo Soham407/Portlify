@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { VALIDATION_RULES, EMPLOYMENT_TYPES, PORTFOLIO_TYPES, VISIBILITY_OPTIONS } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type ParsedContact } from "@/lib/imports";
 
 type Section = "bio" | "projects" | "skills" | "experience" | "education" | "certifications" | "contact" | "settings";
 
@@ -801,15 +802,60 @@ const Builder = () => {
                       }
                     }}
                     onImportSkills={async (skillNames) => {
+                      let remainingSlots = Math.max(VALIDATION_RULES.SKILLS.MAX_COUNT - skills.length, 0);
                       for (const name of skillNames) {
-                        if (skills.length < VALIDATION_RULES.SKILLS.MAX_COUNT) {
+                        if (remainingSlots > 0) {
                           await addSkill.mutateAsync({ skill_name: name, skill_category: "Other", skill_type: "learned" });
+                          remainingSlots -= 1;
                         }
                       }
                     }}
-                    onImportBio={(headline, summary) => {
-                      setBioForm((prev) => ({ ...prev, headline: headline || prev.headline, bio: summary || prev.bio }));
-                      toast({ title: "Bio updated from LinkedIn", description: "Switch to the Bio section to review and save." });
+                    onImportEducation={async (entries) => {
+                      for (const entry of entries) {
+                        await addEducation.mutateAsync({
+                          institution: entry.institution,
+                          degree: entry.degree || "",
+                          field_of_study: entry.field_of_study || "",
+                          graduation_year: entry.graduation_year || "",
+                          description: entry.description || "",
+                        });
+                      }
+                    }}
+                    onImportCertifications={async (entries) => {
+                      for (const entry of entries) {
+                        await addCertification.mutateAsync({
+                          name: entry.name,
+                          issuer: entry.issuer || "",
+                          issue_date: entry.issue_date || "",
+                          expiry_date: entry.expiry_date || "",
+                          credential_url: entry.credential_url || "",
+                          description: entry.description || "",
+                        });
+                      }
+                    }}
+                    onImportContact={async (parsedContact: ParsedContact) => {
+                      const mergedContact = {
+                        ...contactForm,
+                        email: parsedContact.email || contactForm.email,
+                        phone: parsedContact.phone || contactForm.phone,
+                        linkedin_url: parsedContact.linkedin_url || contactForm.linkedin_url,
+                        github_url: parsedContact.github_url || contactForm.github_url,
+                        twitter_url: parsedContact.twitter_url || contactForm.twitter_url,
+                        website_url: parsedContact.website_url || contactForm.website_url,
+                      };
+                      setContactForm(mergedContact);
+                      await saveContact.mutateAsync(mergedContact);
+                    }}
+                    onImportBio={async (headline, summary, location) => {
+                      const mergedBio = {
+                        ...bioForm,
+                        headline: headline || bioForm.headline,
+                        bio: summary || bioForm.bio,
+                        location: location || bioForm.location,
+                      };
+                      setBioForm(mergedBio);
+                      await saveBio.mutateAsync(mergedBio);
+                      toast({ title: "Bio updated from LinkedIn", description: "Headline, bio, and location were merged into your profile." });
                     }}
                   />
                 </div>

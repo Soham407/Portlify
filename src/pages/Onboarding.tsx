@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Briefcase, Check, Sparkles, Wand2 } from "lucide-react";
+import { ArrowRight, Briefcase, Check, Github, Linkedin, Loader2, Sparkles, Upload, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +17,7 @@ import {
   STARTER_CONTENT_MODES,
   TEMPLATES,
   USER_TYPES,
+  VALIDATION_RULES,
 } from "@/lib/constants";
 import {
   getStarterBio,
@@ -25,6 +27,16 @@ import {
   getTemplateForGoal,
   type OnboardingForm,
 } from "@/lib/onboarding";
+import {
+  fetchGithubProjects,
+  parseLinkedInPdf,
+  type GithubProject,
+  type ParsedCertification,
+  type ParsedContact,
+  type ParsedEducation,
+  type ParsedProfile,
+} from "@/lib/imports";
+import { sanitizeArray, sanitizePortfolioData, sanitizeText, sanitizeUrl } from "@/lib/sanitize";
 
 const steps = [
   { id: "identity", title: "Who are you?" },
@@ -66,6 +78,13 @@ const getErrorMessage = (error: unknown) => {
   return "Something went wrong while setting up your portfolio.";
 };
 
+const normalizeImportIntent = (value?: string | null) => {
+  if (value === "linkedin_pdf" || value === "github" || value === "fetch_upload") {
+    return "fetch_upload";
+  }
+  return "manual";
+};
+
 const Onboarding = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -73,6 +92,7 @@ const Onboarding = () => {
   const { toast } = useToast();
   const [stepIndex, setStepIndex] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const linkedInFileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<OnboardingForm>({
     user_type: "fresher",
     career_type: "",
@@ -83,6 +103,19 @@ const Onboarding = () => {
     import_intent: "manual",
     starter_content_mode: "prefilled",
   });
+  const [githubUsername, setGithubUsername] = useState("");
+  const [githubRepos, setGithubRepos] = useState<GithubProject[]>([]);
+  const [selectedRepos, setSelectedRepos] = useState<Set<number>>(new Set());
+  const [isFetchingGithub, setIsFetchingGithub] = useState(false);
+  const [linkedInFileName, setLinkedInFileName] = useState("");
+  const [isParsingLinkedIn, setIsParsingLinkedIn] = useState(false);
+  const [parsedLinkedIn, setParsedLinkedIn] = useState<ParsedProfile | null>(null);
+  const [selectedLinkedInExperiences, setSelectedLinkedInExperiences] = useState<Set<number>>(new Set());
+  const [selectedLinkedInSkills, setSelectedLinkedInSkills] = useState<Set<number>>(new Set());
+  const [selectedLinkedInEducation, setSelectedLinkedInEducation] = useState<Set<number>>(new Set());
+  const [selectedLinkedInCertifications, setSelectedLinkedInCertifications] = useState<Set<number>>(new Set());
+  const [importLinkedInBio, setImportLinkedInBio] = useState(true);
+  const [importLinkedInContact, setImportLinkedInContact] = useState(true);
 
   useEffect(() => {
     if (profile?.onboarding_completed_at) {
@@ -99,7 +132,7 @@ const Onboarding = () => {
         selected_role: profile.selected_role || current.selected_role,
         portfolio_goal: profile.portfolio_goal || current.portfolio_goal,
         preferred_template: profile.preferred_template || current.preferred_template,
-        import_intent: profile.import_intent || current.import_intent,
+        import_intent: normalizeImportIntent(profile.import_intent) || current.import_intent,
         starter_content_mode: profile.starter_content_mode || current.starter_content_mode,
       }));
     }
@@ -138,6 +171,134 @@ const Onboarding = () => {
         : "border-border/80 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
     }`;
 
+  const handleFetchGithub = async () => {
+    if (!githubUsername.trim()) return;
+    setIsFetchingGithub(true);
+    setGithubRepos([]);
+    setSelectedRepos(new Set());
+
+    try {
+      const projects = await fetchGithubProjects(githubUsername);
+      setGithubRepos(projects);
+
+      if (projects.length === 0) {
+        toast({ title: "No public repositories found for this username" });
+      }
+    } catch (error: unknown) {
+      toast({ title: "Error fetching repos", description: getErrorMessage(error), variant: "destructive" });
+    } finally {
+      setIsFetchingGithub(false);
+    }
+  };
+
+  const toggleRepoSelection = (index: number) => {
+    setSelectedRepos((current) => {
+      const next = new Set(current);
+      if (next.has(index)) {
+        next.delete(index);
+      } else if (next.size < VALIDATION_RULES.PROJECTS.MAX_COUNT) {
+        next.add(index);
+      } else {
+        toast({ title: `Select up to ${VALIDATION_RULES.PROJECTS.MAX_COUNT} projects`, variant: "destructive" });
+      }
+      return next;
+    });
+  };
+
+  const handleLinkedInFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      toast({ title: "Please upload a PDF file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large (max 5MB)", variant: "destructive" });
+      return;
+    }
+
+    setLinkedInFileName(file.name);
+    setIsParsingLinkedIn(true);
+    setParsedLinkedIn(null);
+
+    try {
+      const parsedProfile = await parseLinkedInPdf(file);
+      const initialSkillSelection = new Set(
+        parsedProfile.skills
+          .slice(0, VALIDATION_RULES.SKILLS.MAX_COUNT)
+          .map((_, index) => index),
+      );
+      setParsedLinkedIn(parsedProfile);
+      setSelectedLinkedInExperiences(new Set(parsedProfile.experiences.map((_, index) => index)));
+      setSelectedLinkedInSkills(initialSkillSelection);
+      setSelectedLinkedInEducation(new Set(parsedProfile.education.map((_, index) => index)));
+      setSelectedLinkedInCertifications(new Set(parsedProfile.certifications.map((_, index) => index)));
+      setImportLinkedInBio(true);
+      setImportLinkedInContact(true);
+      toast({
+        title: "LinkedIn data ready",
+        description:
+          [
+            `${parsedProfile.experiences.length} experiences`,
+            `${parsedProfile.skills.length} skills`,
+            `${parsedProfile.education.length} education entries`,
+            `${parsedProfile.certifications.length} certifications`,
+            parsedProfile.skills.length > VALIDATION_RULES.SKILLS.MAX_COUNT
+              ? `preselected first ${VALIDATION_RULES.SKILLS.MAX_COUNT} skills`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(", "),
+      });
+    } catch (error: unknown) {
+      toast({ title: "Error parsing PDF", description: getErrorMessage(error), variant: "destructive" });
+    } finally {
+      setIsParsingLinkedIn(false);
+      if (linkedInFileRef.current) linkedInFileRef.current.value = "";
+    }
+  };
+
+  const toggleLinkedInExperience = (index: number) => {
+    setSelectedLinkedInExperiences((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const toggleLinkedInSkill = (index: number) => {
+    setSelectedLinkedInSkills((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else if (next.size < VALIDATION_RULES.SKILLS.MAX_COUNT) next.add(index);
+      else toast({ title: `Select up to ${VALIDATION_RULES.SKILLS.MAX_COUNT} skills`, variant: "destructive" });
+      return next;
+    });
+  };
+
+  const toggleLinkedInEducation = (index: number) => {
+    setSelectedLinkedInEducation((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const toggleLinkedInCertification = (index: number) => {
+    setSelectedLinkedInCertifications((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const hasImportedContact = (contact?: ParsedContact) => !!contact && Object.values(contact).some(Boolean);
+
   const handleFinish = async () => {
     if (!user) return;
     setIsSaving(true);
@@ -152,6 +313,92 @@ const Onboarding = () => {
         start_date: experience.start_date || null,
         end_date: experience.end_date || null,
       }));
+      const selectedGithubProjects = Array.from(selectedRepos)
+        .map((index) => githubRepos[index])
+        .filter(Boolean)
+        .slice(0, VALIDATION_RULES.PROJECTS.MAX_COUNT);
+      const selectedImportedExperiences = parsedLinkedIn
+        ? Array.from(selectedLinkedInExperiences).map((index) => parsedLinkedIn.experiences[index]).filter(Boolean)
+        : [];
+      const selectedImportedSkills = parsedLinkedIn
+        ? Array.from(selectedLinkedInSkills)
+            .map((index) => parsedLinkedIn.skills[index])
+            .filter(Boolean)
+            .slice(0, VALIDATION_RULES.SKILLS.MAX_COUNT)
+        : [];
+      const selectedImportedEducation = parsedLinkedIn
+        ? Array.from(selectedLinkedInEducation).map((index) => parsedLinkedIn.education[index]).filter(Boolean)
+        : [];
+      const selectedImportedCertifications = parsedLinkedIn
+        ? Array.from(selectedLinkedInCertifications).map((index) => parsedLinkedIn.certifications[index]).filter(Boolean)
+        : [];
+      const shouldImportLinkedInBio =
+        form.import_intent === "fetch_upload" &&
+        importLinkedInBio &&
+        !!parsedLinkedIn &&
+        !!(parsedLinkedIn.headline || parsedLinkedIn.summary);
+      const shouldImportLinkedInContact =
+        form.import_intent === "fetch_upload" &&
+        importLinkedInContact &&
+        hasImportedContact(parsedLinkedIn?.contact);
+      const bioToCreate = {
+        headline: shouldImportLinkedInBio ? parsedLinkedIn?.headline || starterBio.headline : starterBio.headline,
+        bio: shouldImportLinkedInBio ? parsedLinkedIn?.summary || starterBio.bio : starterBio.bio,
+        location: shouldImportLinkedInBio ? parsedLinkedIn?.location || profile?.location || "" : profile?.location || "",
+      };
+      const projectsToCreate =
+        selectedGithubProjects.length > 0
+          ? selectedGithubProjects.map((project) => ({
+              name: project.name,
+              problem_statement: project.problem_statement || "",
+              solution_approach: project.solution_approach || "",
+              technologies: project.technologies || [],
+              github_url: project.github_url || "",
+              project_url: project.demo_url || "",
+            }))
+          : starterProjects;
+      const experiencesToCreate =
+        selectedImportedExperiences.length > 0
+          ? selectedImportedExperiences.map((experience) => ({
+              company_name: experience.company_name,
+              role_title: experience.role_title,
+              employment_type: experience.employment_type || "full-time",
+              start_date: experience.start_date || null,
+              end_date: experience.end_date || null,
+              is_current: experience.is_current || false,
+              description: experience.description || "",
+            }))
+          : starterExperiences;
+      const skillsToCreate = sanitizeArray(selectedImportedSkills).slice(0, VALIDATION_RULES.SKILLS.MAX_COUNT);
+      const educationToCreate = selectedImportedEducation.map((entry: ParsedEducation) => ({
+        institution: sanitizeText(entry.institution).slice(0, 150),
+        degree: entry.degree ? sanitizeText(entry.degree).slice(0, 100) : null,
+        field_of_study: entry.field_of_study ? sanitizeText(entry.field_of_study).slice(0, 100) : null,
+        graduation_year: entry.graduation_year ? sanitizeText(entry.graduation_year).slice(0, 4) : null,
+        description: entry.description ? sanitizeText(entry.description).slice(0, 300) : null,
+      }));
+      const certificationsToCreate = selectedImportedCertifications.map((entry: ParsedCertification) => ({
+        name: sanitizeText(entry.name).slice(0, 100),
+        issuer: entry.issuer ? sanitizeText(entry.issuer).slice(0, 100) : "",
+        issue_date: entry.issue_date ? sanitizeText(entry.issue_date).slice(0, 7) : null,
+        expiry_date: entry.expiry_date ? sanitizeText(entry.expiry_date).slice(0, 7) : null,
+        credential_url: entry.credential_url ? sanitizeUrl(entry.credential_url) : null,
+        description: entry.description ? sanitizeText(entry.description).slice(0, 300) : null,
+      }));
+      const sanitizedImportedContact = shouldImportLinkedInContact
+        ? sanitizePortfolioData.contact({
+            email: parsedLinkedIn?.contact?.email || "",
+            phone: parsedLinkedIn?.contact?.phone || "",
+            linkedin_url: parsedLinkedIn?.contact?.linkedin_url || "",
+            github_url: parsedLinkedIn?.contact?.github_url || "",
+            twitter_url: parsedLinkedIn?.contact?.twitter_url || "",
+            website_url: parsedLinkedIn?.contact?.website_url || "",
+          })
+        : null;
+      const contactToCreate =
+        sanitizedImportedContact && Object.values(sanitizedImportedContact).some(Boolean)
+          ? sanitizedImportedContact
+          : null;
 
       const { error: profileError } = await supabase
         .from("profiles")
@@ -220,14 +467,14 @@ const Onboarding = () => {
           portfolio_id: portfolioId,
           first_name: names[0] || "",
           last_name: names.slice(1).join(" "),
-          headline: starterBio.headline,
-          bio: starterBio.bio,
-          location: profile?.location || "",
+          headline: bioToCreate.headline,
+          bio: bioToCreate.bio,
+          location: bioToCreate.location,
         });
         if (bioError) throw bioError;
       }
 
-      if (starterProjects.length > 0) {
+      if (projectsToCreate.length > 0) {
         const { data: existingProjects, error: existingProjectsError } = await supabase
           .from("portfolio_projects")
           .select("id")
@@ -237,8 +484,8 @@ const Onboarding = () => {
 
         if (!existingProjects || existingProjects.length === 0) {
           const { error: projectError } = await supabase.from("portfolio_projects").insert(
-            starterProjects.map((project, index) => ({
-              ...project,
+            projectsToCreate.map((project, index) => ({
+              ...sanitizePortfolioData.project(project),
               portfolio_id: portfolioId,
               user_id: user.id,
               display_order: index,
@@ -248,7 +495,7 @@ const Onboarding = () => {
         }
       }
 
-      if (starterExperiences.length > 0) {
+      if (experiencesToCreate.length > 0) {
         const { data: existingExperiences, error: existingExperiencesError } = await supabase
           .from("experiences")
           .select("id")
@@ -258,8 +505,14 @@ const Onboarding = () => {
 
         if (!existingExperiences || existingExperiences.length === 0) {
           const { error: experienceError } = await supabase.from("experiences").insert(
-            starterExperiences.map((experience, index) => ({
-              ...experience,
+            experiencesToCreate.map((experience, index) => ({
+              company_name: sanitizeText(experience.company_name).slice(0, 100),
+              role_title: sanitizeText(experience.role_title).slice(0, 100),
+              employment_type: experience.employment_type,
+              start_date: experience.start_date || null,
+              end_date: experience.end_date || null,
+              description: experience.description ? sanitizeText(experience.description).slice(0, 500) : null,
+              is_current: experience.is_current || false,
               portfolio_id: portfolioId,
               user_id: user.id,
               display_order: index,
@@ -269,8 +522,89 @@ const Onboarding = () => {
         }
       }
 
-      toast({ title: "Portfolio setup complete", description: "Your builder is ready with the right defaults." });
-      navigate("/dashboard", { replace: true });
+      if (skillsToCreate.length > 0) {
+        const { data: existingSkills, error: existingSkillsError } = await supabase
+          .from("skills")
+          .select("id")
+          .eq("portfolio_id", portfolioId)
+          .limit(1);
+        if (existingSkillsError) throw existingSkillsError;
+
+        if (!existingSkills || existingSkills.length === 0) {
+          const { error: skillsError } = await supabase.from("skills").insert(
+            skillsToCreate.map((skill, index) => ({
+              skill_name: sanitizeText(skill).slice(0, 50),
+              skill_category: "Other",
+              skill_type: "learned",
+              portfolio_id: portfolioId,
+              user_id: user.id,
+              display_order: index,
+            })),
+          );
+          if (skillsError) throw skillsError;
+        }
+      }
+
+      if (educationToCreate.length > 0) {
+        const { data: existingEducation, error: existingEducationError } = await supabase
+          .from("education")
+          .select("id")
+          .eq("portfolio_id", portfolioId)
+          .limit(1);
+        if (existingEducationError) throw existingEducationError;
+
+        if (!existingEducation || existingEducation.length === 0) {
+          const { error: educationError } = await supabase.from("education").insert(
+            educationToCreate.map((entry, index) => ({
+              ...entry,
+              portfolio_id: portfolioId,
+              user_id: user.id,
+              display_order: index,
+            })),
+          );
+          if (educationError) throw educationError;
+        }
+      }
+
+      if (certificationsToCreate.length > 0) {
+        const { data: existingCertifications, error: existingCertificationsError } = await supabase
+          .from("certifications")
+          .select("id")
+          .eq("portfolio_id", portfolioId)
+          .limit(1);
+        if (existingCertificationsError) throw existingCertificationsError;
+
+        if (!existingCertifications || existingCertifications.length === 0) {
+          const { error: certificationsError } = await supabase.from("certifications").insert(
+            certificationsToCreate.map((entry, index) => ({
+              ...entry,
+              portfolio_id: portfolioId,
+              user_id: user.id,
+              display_order: index,
+            })),
+          );
+          if (certificationsError) throw certificationsError;
+        }
+      }
+
+      if (contactToCreate) {
+        const { data: existingContact, error: existingContactError } = await supabase
+          .from("contact_info")
+          .select("id")
+          .eq("portfolio_id", portfolioId)
+          .maybeSingle();
+        if (existingContactError) throw existingContactError;
+
+        if (!existingContact) {
+          const { error: contactError } = await supabase
+            .from("contact_info")
+            .insert({ ...contactToCreate, portfolio_id: portfolioId });
+          if (contactError) throw contactError;
+        }
+      }
+
+      toast({ title: "Portfolio setup complete", description: "Your builder is ready with your imported and starter content." });
+      navigate(`/builder?portfolio=${portfolioId}`, { replace: true });
     } catch (error: unknown) {
       toast({ title: "Onboarding failed", description: getErrorMessage(error), variant: "destructive" });
     } finally {
@@ -478,6 +812,256 @@ const Onboarding = () => {
                       ))}
                     </div>
                   </div>
+
+                  {form.import_intent === "fetch_upload" && (
+                    <div className="space-y-5 rounded-[28px] border border-primary/20 bg-primary/5 p-5">
+                      <div>
+                        <p className="text-sm font-semibold">Bring in real data now</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Importing here is optional, but this is where the choice becomes real. Anything you bring in can still be edited in Builder.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-5 lg:grid-cols-2">
+                        <div className="rounded-3xl border border-border/80 bg-background/90 p-4">
+                          <div className="flex items-center gap-2">
+                            <Github className="h-4 w-4" />
+                            <p className="font-semibold">Fetch GitHub projects</p>
+                          </div>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Pull public repositories now and choose which ones to seed into your portfolio.
+                          </p>
+                          <div className="mt-4 flex gap-2">
+                            <Input
+                              placeholder="GitHub username"
+                              value={githubUsername}
+                              onChange={(event) => setGithubUsername(event.target.value)}
+                              onKeyDown={(event) => event.key === "Enter" && handleFetchGithub()}
+                            />
+                            <Button type="button" onClick={handleFetchGithub} disabled={isFetchingGithub || !githubUsername.trim()}>
+                              {isFetchingGithub ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fetch"}
+                            </Button>
+                          </div>
+
+                          {githubRepos.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                Selected {selectedRepos.size}/{VALIDATION_RULES.PROJECTS.MAX_COUNT}
+                              </p>
+                              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                                {githubRepos.map((repo, index) => (
+                                  <button
+                                    key={`${repo.github_url || repo.name}-${index}`}
+                                    type="button"
+                                    onClick={() => toggleRepoSelection(index)}
+                                    className={`w-full rounded-2xl border p-3 text-left transition-all ${
+                                      selectedRepos.has(index)
+                                        ? "border-primary bg-primary/10"
+                                        : "border-border/80 bg-background hover:border-primary/30"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <p className="font-medium">{repo.name}</p>
+                                        {repo.problem_statement && (
+                                          <p className="mt-1 text-xs text-muted-foreground">{repo.problem_statement}</p>
+                                        )}
+                                      </div>
+                                      {selectedRepos.has(index) && (
+                                        <span className="rounded-full bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
+                                          Selected
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-3xl border border-border/80 bg-background/90 p-4">
+                          <div className="flex items-center gap-2">
+                            <Linkedin className="h-4 w-4 text-[#0A66C2]" />
+                            <p className="font-semibold">Upload LinkedIn PDF</p>
+                          </div>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Upload your LinkedIn PDF export and choose the bio, experience, and skills you want to keep.
+                          </p>
+
+                          <input
+                            ref={linkedInFileRef}
+                            type="file"
+                            accept=".pdf"
+                            onChange={handleLinkedInFileSelect}
+                            className="hidden"
+                          />
+
+                          {!parsedLinkedIn ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="mt-4 w-full"
+                              onClick={() => linkedInFileRef.current?.click()}
+                              disabled={isParsingLinkedIn}
+                            >
+                              {isParsingLinkedIn ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Parsing {linkedInFileName}...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Upload LinkedIn PDF
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <div className="mt-4 space-y-4">
+                              {(parsedLinkedIn.headline || parsedLinkedIn.summary) && (
+                                <label className="flex items-center gap-2 text-sm font-medium">
+                                  <input
+                                    type="checkbox"
+                                    checked={importLinkedInBio}
+                                    onChange={(event) => setImportLinkedInBio(event.target.checked)}
+                                  />
+                                  Use LinkedIn bio for the starter profile
+                                </label>
+                              )}
+                              {parsedLinkedIn.location && (
+                                <p className="text-xs text-muted-foreground">Location: {parsedLinkedIn.location}</p>
+                              )}
+
+                              {hasImportedContact(parsedLinkedIn.contact) && (
+                                <div className="space-y-2">
+                                  <label className="flex items-center gap-2 text-sm font-medium">
+                                    <input
+                                      type="checkbox"
+                                      checked={importLinkedInContact}
+                                      onChange={(event) => setImportLinkedInContact(event.target.checked)}
+                                    />
+                                    Import contact links
+                                  </label>
+                                  <div className="rounded-2xl border border-border/80 bg-background p-3 text-xs text-muted-foreground space-y-1">
+                                    {parsedLinkedIn.contact?.linkedin_url && <p>LinkedIn: {parsedLinkedIn.contact.linkedin_url}</p>}
+                                    {parsedLinkedIn.contact?.website_url && <p>Website: {parsedLinkedIn.contact.website_url}</p>}
+                                    {parsedLinkedIn.contact?.email && <p>Email: {parsedLinkedIn.contact.email}</p>}
+                                    {parsedLinkedIn.contact?.phone && <p>Phone: {parsedLinkedIn.contact.phone}</p>}
+                                    {parsedLinkedIn.contact?.twitter_url && <p>Twitter: {parsedLinkedIn.contact.twitter_url}</p>}
+                                    {parsedLinkedIn.contact?.github_url && <p>GitHub: {parsedLinkedIn.contact.github_url}</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {parsedLinkedIn.experiences.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                    Experiences {selectedLinkedInExperiences.size}/{parsedLinkedIn.experiences.length}
+                                  </p>
+                                  <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                                    {parsedLinkedIn.experiences.map((experience, index) => (
+                                      <button
+                                        key={`${experience.company_name}-${experience.role_title}-${index}`}
+                                        type="button"
+                                        onClick={() => toggleLinkedInExperience(index)}
+                                        className={`w-full rounded-2xl border p-3 text-left transition-all ${
+                                          selectedLinkedInExperiences.has(index)
+                                            ? "border-primary bg-primary/10"
+                                            : "border-border/80 bg-background hover:border-primary/30"
+                                        }`}
+                                      >
+                                        <p className="font-medium">{experience.role_title}</p>
+                                        <p className="text-xs text-muted-foreground">{experience.company_name}</p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {parsedLinkedIn.skills.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                    Skills {selectedLinkedInSkills.size}/{VALIDATION_RULES.SKILLS.MAX_COUNT}
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {parsedLinkedIn.skills.map((skill, index) => (
+                                      <Badge
+                                        key={`${skill}-${index}`}
+                                        variant={selectedLinkedInSkills.has(index) ? "default" : "outline"}
+                                        className="cursor-pointer"
+                                        onClick={() => toggleLinkedInSkill(index)}
+                                      >
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {parsedLinkedIn.education.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                    Education {selectedLinkedInEducation.size}/{parsedLinkedIn.education.length}
+                                  </p>
+                                  <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                                    {parsedLinkedIn.education.map((entry, index) => (
+                                      <button
+                                        key={`${entry.institution}-${entry.degree || ""}-${index}`}
+                                        type="button"
+                                        onClick={() => toggleLinkedInEducation(index)}
+                                        className={`w-full rounded-2xl border p-3 text-left transition-all ${
+                                          selectedLinkedInEducation.has(index)
+                                            ? "border-primary bg-primary/10"
+                                            : "border-border/80 bg-background hover:border-primary/30"
+                                        }`}
+                                      >
+                                        <p className="font-medium">{entry.institution}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {[entry.degree, entry.field_of_study, entry.graduation_year].filter(Boolean).join(" · ")}
+                                        </p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {parsedLinkedIn.certifications.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                    Certifications {selectedLinkedInCertifications.size}/{parsedLinkedIn.certifications.length}
+                                  </p>
+                                  <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                                    {parsedLinkedIn.certifications.map((entry, index) => (
+                                      <button
+                                        key={`${entry.name}-${entry.issuer || ""}-${index}`}
+                                        type="button"
+                                        onClick={() => toggleLinkedInCertification(index)}
+                                        className={`w-full rounded-2xl border p-3 text-left transition-all ${
+                                          selectedLinkedInCertifications.has(index)
+                                            ? "border-primary bg-primary/10"
+                                            : "border-border/80 bg-background hover:border-primary/30"
+                                        }`}
+                                      >
+                                        <p className="font-medium">{entry.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {[entry.issuer, entry.issue_date].filter(Boolean).join(" · ")}
+                                        </p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <Button type="button" variant="outline" className="w-full" onClick={() => setParsedLinkedIn(null)}>
+                                Replace LinkedIn PDF
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <p className="mb-3 text-sm font-medium">Starter Content</p>

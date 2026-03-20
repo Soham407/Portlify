@@ -170,8 +170,7 @@ export const PORTFOLIO_GOALS = [
 
 export const IMPORT_INTENTS = [
   { value: "manual", label: "Build Manually", description: "Start from scratch and enter details yourself." },
-  { value: "linkedin_pdf", label: "LinkedIn PDF", description: "Upload a LinkedIn export to prefill experience and skills." },
-  { value: "github", label: "GitHub Import", description: "Pull projects from GitHub and refine them in the builder." },
+  { value: "fetch_upload", label: "Fetch & Upload", description: "Bring in LinkedIn or GitHub data now, then refine it in the builder." },
 ] as const;
 
 export const STARTER_CONTENT_MODES = [

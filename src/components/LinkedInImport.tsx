@@ -1,37 +1,34 @@
-import { useState, useRef } from "react";
+import { useState, useRef, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Linkedin, Upload, Loader2, Check, X, FileText } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Linkedin, Upload, Loader2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import * as pdfjsLib from "pdfjs-dist";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
-
-type ParsedExperience = {
-  company_name: string;
-  role_title: string;
-  employment_type?: string;
-  start_date?: string;
-  end_date?: string;
-  is_current?: boolean;
-  description?: string;
-};
-
-type ParsedProfile = {
-  headline?: string;
-  summary?: string;
-  experiences: ParsedExperience[];
-  skills: string[];
-};
+import {
+  parseLinkedInPdf,
+  type ParsedCertification,
+  type ParsedContact,
+  type ParsedEducation,
+  type ParsedExperience,
+  type ParsedProfile,
+} from "@/lib/imports";
 
 type LinkedInImportProps = {
   onImportExperiences: (experiences: ParsedExperience[]) => Promise<void>;
   onImportSkills: (skills: string[]) => Promise<void>;
-  onImportBio: (headline: string, summary: string) => void;
+  onImportEducation: (education: ParsedEducation[]) => Promise<void>;
+  onImportCertifications: (certifications: ParsedCertification[]) => Promise<void>;
+  onImportContact: (contact: ParsedContact) => Promise<void>;
+  onImportBio: (headline: string, summary: string, location?: string) => Promise<void> | void;
 };
 
-const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: LinkedInImportProps) => {
+const LinkedInImport = ({
+  onImportExperiences,
+  onImportSkills,
+  onImportEducation,
+  onImportCertifications,
+  onImportContact,
+  onImportBio,
+}: LinkedInImportProps) => {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -39,27 +36,18 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
   const [parsed, setParsed] = useState<ParsedProfile | null>(null);
   const [selectedExps, setSelectedExps] = useState<Set<number>>(new Set());
   const [selectedSkills, setSelectedSkills] = useState<Set<number>>(new Set());
+  const [selectedEducation, setSelectedEducation] = useState<Set<number>>(new Set());
+  const [selectedCertifications, setSelectedCertifications] = useState<Set<number>>(new Set());
   const [importBio, setImportBio] = useState(true);
+  const [importContact, setImportContact] = useState(true);
   const [fileName, setFileName] = useState("");
 
-  const extractTextFromPdf = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const textParts: string[] = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items
-        .map((item: any) => item.str)
-        .join(" ");
-      textParts.push(pageText);
-    }
-
-    return textParts.join("\n\n");
+  const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) return error.message;
+    return "Something went wrong while parsing this PDF.";
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -78,34 +66,23 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
     setParsed(null);
 
     try {
-      const text = await extractTextFromPdf(file);
-
-      if (text.trim().length < 50) {
-        toast({ title: "Could not extract enough text from this PDF", variant: "destructive" });
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke("parse-linkedin", {
-        body: { text },
-      });
-
-      if (error) throw error;
-      if (data?.error) {
-        toast({ title: "Parse error", description: data.error, variant: "destructive" });
-        return;
-      }
-
-      const profile = data.parsed as ParsedProfile;
+      const profile = await parseLinkedInPdf(file);
       setParsed(profile);
 
       // Select all by default
       setSelectedExps(new Set(profile.experiences.map((_, i) => i)));
       setSelectedSkills(new Set(profile.skills.map((_, i) => i)));
+      setSelectedEducation(new Set(profile.education.map((_, i) => i)));
+      setSelectedCertifications(new Set(profile.certifications.map((_, i) => i)));
       setImportBio(true);
+      setImportContact(true);
 
-      toast({ title: `Found ${profile.experiences.length} experiences and ${profile.skills.length} skills` });
-    } catch (err: any) {
-      toast({ title: "Error parsing PDF", description: err.message, variant: "destructive" });
+      toast({
+        title: "LinkedIn data ready",
+        description: `${profile.experiences.length} experiences, ${profile.skills.length} skills, ${profile.education.length} education entries, ${profile.certifications.length} certifications`,
+      });
+    } catch (error: unknown) {
+      toast({ title: "Error parsing PDF", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsParsing(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -130,6 +107,24 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
     });
   };
 
+  const toggleEducation = (idx: number) => {
+    setSelectedEducation((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const toggleCertification = (idx: number) => {
+    setSelectedCertifications((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
   const handleImport = async () => {
     if (!parsed) return;
     setIsImporting(true);
@@ -137,7 +132,11 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
     try {
       // Import bio
       if (importBio && (parsed.headline || parsed.summary)) {
-        onImportBio(parsed.headline || "", parsed.summary || "");
+        await onImportBio(parsed.headline || "", parsed.summary || "", parsed.location || "");
+      }
+
+      if (importContact && parsed.contact && Object.values(parsed.contact).some(Boolean)) {
+        await onImportContact(parsed.contact);
       }
 
       // Import experiences
@@ -152,13 +151,23 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
         await onImportSkills(skills);
       }
 
+      if (selectedEducation.size > 0) {
+        const education = Array.from(selectedEducation).map((i) => parsed.education[i]);
+        await onImportEducation(education);
+      }
+
+      if (selectedCertifications.size > 0) {
+        const certifications = Array.from(selectedCertifications).map((i) => parsed.certifications[i]);
+        await onImportCertifications(certifications);
+      }
+
       toast({
         title: "LinkedIn data imported!",
-        description: `${selectedExps.size} experiences, ${selectedSkills.size} skills imported`,
+        description: `${selectedExps.size} experiences, ${selectedSkills.size} skills, ${selectedEducation.size} education entries, ${selectedCertifications.size} certifications imported`,
       });
       setParsed(null);
-    } catch (err: any) {
-      toast({ title: "Import error", description: err.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Import error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsImporting(false);
     }
@@ -215,6 +224,30 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
               {parsed.headline && (
                 <p className="text-xs text-muted-foreground pl-6">Headline: {parsed.headline}</p>
               )}
+              {parsed.location && (
+                <p className="text-xs text-muted-foreground pl-6">Location: {parsed.location}</p>
+              )}
+            </div>
+          )}
+
+          {parsed.contact && Object.values(parsed.contact).some(Boolean) && (
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={importContact}
+                  onChange={(e) => setImportContact(e.target.checked)}
+                />
+                Import Contact Links
+              </label>
+              <div className="pl-6 text-xs text-muted-foreground space-y-1">
+                {parsed.contact.linkedin_url && <p>LinkedIn: {parsed.contact.linkedin_url}</p>}
+                {parsed.contact.website_url && <p>Website: {parsed.contact.website_url}</p>}
+                {parsed.contact.email && <p>Email: {parsed.contact.email}</p>}
+                {parsed.contact.phone && <p>Phone: {parsed.contact.phone}</p>}
+                {parsed.contact.twitter_url && <p>Twitter: {parsed.contact.twitter_url}</p>}
+                {parsed.contact.github_url && <p>GitHub: {parsed.contact.github_url}</p>}
+              </div>
             </div>
           )}
 
@@ -264,6 +297,58 @@ const LinkedInImport = ({ onImportExperiences, onImportSkills, onImportBio }: Li
                   </Badge>
                 ))}
               </div>
+            </div>
+          )}
+
+          {parsed.education.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Education ({selectedEducation.size}/{parsed.education.length})</p>
+              {parsed.education.map((entry, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => toggleEducation(idx)}
+                  className={`flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all ${
+                    selectedEducation.has(idx) ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                >
+                  <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                    selectedEducation.has(idx) ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"
+                  }`}>
+                    {selectedEducation.has(idx) && <Check className="h-2.5 w-2.5" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium">{entry.institution}</span>
+                    {(entry.degree || entry.field_of_study) && (
+                      <span className="text-muted-foreground"> · {[entry.degree, entry.field_of_study].filter(Boolean).join(" in ")}</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {parsed.certifications.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Certifications ({selectedCertifications.size}/{parsed.certifications.length})</p>
+              {parsed.certifications.map((entry, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => toggleCertification(idx)}
+                  className={`flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all ${
+                    selectedCertifications.has(idx) ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                >
+                  <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                    selectedCertifications.has(idx) ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"
+                  }`}>
+                    {selectedCertifications.has(idx) && <Check className="h-2.5 w-2.5" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium">{entry.name}</span>
+                    {entry.issuer && <span className="text-muted-foreground"> · {entry.issuer}</span>}
+                  </div>
+                </button>
+              ))}
             </div>
           )}
 
