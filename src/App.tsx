@@ -17,11 +17,14 @@ import TemplateSelection from "./pages/TemplateSelection";
 import UserTypeSelection from "./pages/UserTypeSelection";
 import CareerSetup from "./pages/CareerSetup";
 import RoleSelection from "./pages/RoleSelection";
+import Onboarding from "./pages/Onboarding";
 import SOPGenerator from "./pages/SOPGenerator";
 import AuthCallback from "./pages/AuthCallback";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import SharedPortfolio from "./pages/SharedPortfolio";
+import ExportPortfolio from "./pages/ExportPortfolio";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +44,10 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/p/:username" element={<PublicPortfolio />} />
+              <Route path="/p/:username/:token" element={<PublicPortfolio />} />
+              <Route path="/share/:token" element={<SharedPortfolio />} />
+              <Route path="/export/:mode" element={<ProtectedRoute><ExportPortfolio /></ProtectedRoute>} />
+              <Route path="/onboarding" element={<ProtectedRoute allowIncompleteOnboarding><Onboarding /></ProtectedRoute>} />
               <Route path="/user-type-selection" element={<ProtectedRoute><UserTypeSelection /></ProtectedRoute>} />
               <Route path="/career-setup" element={<ProtectedRoute><CareerSetup /></ProtectedRoute>} />
               <Route path="/role-selection" element={<ProtectedRoute><RoleSelection /></ProtectedRoute>} />

@@ -73,6 +73,8 @@ export interface PortfolioData {
   contact: ContactProp | null;
   certifications: CertificationProp[];
   sectionLayouts?: Record<string, string>;
+  sectionOrder?: string[];
+  hiddenSections?: string[];
   editMode?: boolean;
   onSectionEdit?: (section: string) => void;
 }

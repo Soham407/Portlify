@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from "react";
-import { PORTFOLIO_TYPES } from "@/lib/constants";
+import { PORTFOLIO_TYPES, VISIBILITY_OPTIONS } from "@/lib/constants";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 const portfolioTypeColors: Record<string, string> = {
@@ -224,18 +224,28 @@ const Dashboard = () => {
     });
   };
 
-  const handleToggleVisibility = (id: string, currentPublic: boolean) => {
+  const handleSetVisibility = (id: string, visibility: string) => {
+    if (visibility === "public" && !profile?.username) {
+      toast({
+        title: "Set a username before making a portfolio public",
+        description: "Public portfolios need a username so the public URL can resolve.",
+        variant: "destructive",
+      });
+      return;
+    }
     updatePortfolio.mutate(
-      { id, is_public: !currentPublic } as any,
+      { id, visibility } as any,
       {
-        onSuccess: () => toast({ title: !currentPublic ? "Portfolio is now public" : "Portfolio is now private" }),
+        onSuccess: () => toast({ title: `Portfolio visibility set to ${visibility}` }),
         onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
       }
     );
   };
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}/p/${profile?.username}`;
+    const url = portfolio?.visibility === "unlisted"
+      ? `${window.location.origin}/share/${portfolio.share_token}`
+      : `${window.location.origin}/p/${profile?.username}${portfolio?.share_token ? `/${portfolio.share_token}` : ""}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -243,7 +253,9 @@ const Dashboard = () => {
   };
 
   const handleNativeShare = async () => {
-    const url = `${window.location.origin}/p/${profile?.username}`;
+    const url = portfolio?.visibility === "unlisted"
+      ? `${window.location.origin}/share/${portfolio.share_token}`
+      : `${window.location.origin}/p/${profile?.username}${portfolio?.share_token ? `/${portfolio.share_token}` : ""}`;
     await navigator.share({ title: "My Portfolio", url });
   };
 
@@ -287,14 +299,17 @@ const Dashboard = () => {
     },
     {
       label: "Visibility",
-      value: portfolio?.is_public ? "Public" : "Private",
-      sub: portfolio?.is_public ? "Live on the web" : "Make it public",
+      value: portfolio?.visibility === "unlisted" ? "Unlisted" : portfolio?.visibility === "public" ? "Public" : "Private",
+      sub: portfolio?.visibility === "public" ? "Live on the web" : portfolio?.visibility === "unlisted" ? "Secret share link" : "Only you can view it",
       icon: TrendingUp,
-      color: portfolio?.is_public ? "text-emerald-600 bg-emerald-500/10" : "text-muted-foreground bg-muted",
+      color: portfolio?.visibility === "public" ? "text-emerald-600 bg-emerald-500/10" : portfolio?.visibility === "unlisted" ? "text-amber-600 bg-amber-500/10" : "text-muted-foreground bg-muted",
     },
   ];
 
-  const publicUrl = `${window.location.origin}/p/${profile?.username}`;
+  const publicUrl = `${window.location.origin}/p/${profile?.username}${portfolio?.share_token ? `/${portfolio.share_token}` : ""}`;
+  const shareUrl = portfolio?.visibility === "unlisted"
+    ? `${window.location.origin}/share/${portfolio?.share_token}`
+    : publicUrl;
 
   const relativeTime = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -495,9 +510,9 @@ const Dashboard = () => {
                           <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium capitalize ${portfolioTypeColors[p.portfolio_type || "general"] || "bg-muted text-muted-foreground border-border"}`}>
                             {p.portfolio_type || "general"}
                           </span>
-                          {(p as any).visibility === 'share_only' ? (
-                            <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0"><Share2 className="h-2.5 w-2.5" /> Share Only</Badge>
-                          ) : p.is_public ? (
+                          {p.visibility === "unlisted" ? (
+                            <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 text-amber-600 border-amber-200"><Share2 className="h-2.5 w-2.5" /> Unlisted</Badge>
+                          ) : p.visibility === "public" ? (
                             <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 text-emerald-600 border-emerald-200"><Globe className="h-2.5 w-2.5" /> Public</Badge>
                           ) : (
                             <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0"><Lock className="h-2.5 w-2.5" /> Private</Badge>
@@ -526,11 +541,14 @@ const Dashboard = () => {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleToggleVisibility(p.id, p.is_public ?? false)}>
-                            {p.is_public
-                              ? <><Lock className="mr-2 h-3.5 w-3.5" /> Make Private</>
-                              : <><Globe className="mr-2 h-3.5 w-3.5" /> Make Public</>}
-                          </DropdownMenuItem>
+                          {VISIBILITY_OPTIONS.map((option) => (
+                            <DropdownMenuItem key={option.value} onClick={() => handleSetVisibility(p.id, option.value)}>
+                              {option.value === "public" && <Globe className="mr-2 h-3.5 w-3.5" />}
+                              {option.value === "private" && <Lock className="mr-2 h-3.5 w-3.5" />}
+                              {option.value === "unlisted" && <Share2 className="mr-2 h-3.5 w-3.5" />}
+                              {option.label}
+                            </DropdownMenuItem>
+                          ))}
                           {allPortfolios.length > 1 && (
                             <>
                               <DropdownMenuSeparator />
@@ -617,7 +635,7 @@ const Dashboard = () => {
                 <Button
                   variant="hero"
                   size="sm"
-                  disabled={!profile?.username || !portfolio?.is_public}
+                  disabled={portfolio?.visibility === "public" ? !profile?.username : !portfolio?.share_token}
                   onClick={() => setIsShareOpen(true)}
                 >
                   Share Portfolio
@@ -637,26 +655,28 @@ const Dashboard = () => {
             <DialogDescription>
               {!profile?.username
                 ? "Set a username first to get your public URL."
-                : !portfolio?.is_public
-                ? "Make your portfolio public to share it."
-                : "Share your portfolio with the world."}
+                : portfolio?.visibility === "private"
+                ? "Change visibility to public or unlisted before sharing."
+                : portfolio?.visibility === "unlisted"
+                ? "Share your secret link with selected people."
+                : "Share your public portfolio with the world."}
             </DialogDescription>
           </DialogHeader>
-          {!profile?.username || !portfolio?.is_public ? (
+          {(!profile?.username && portfolio?.visibility === "public") || portfolio?.visibility === "private" ? (
             <div className="py-2">
               <Button variant="hero" asChild className="w-full">
                 <Link to={`${builderHref}${builderHref.includes("?") ? "&" : "?"}section=settings`} onClick={() => setIsShareOpen(false)}>
                   <Settings className="mr-2 h-4 w-4" />
-                  {!profile?.username ? "Set Username in Settings" : "Make Portfolio Public in Settings"}
+                  {!profile?.username ? "Set Username in Settings" : "Update Visibility in Settings"}
                 </Link>
               </Button>
             </div>
           ) : (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label>Your public URL</Label>
+                <Label>{portfolio?.visibility === "unlisted" ? "Your secret share URL" : "Your public URL"}</Label>
                 <div className="flex gap-2">
-                  <Input value={publicUrl} readOnly className="flex-1 text-sm" />
+                  <Input value={shareUrl} readOnly className="flex-1 text-sm" />
                   <Button size="sm" variant="outline" onClick={handleCopyLink}>
                     {copied ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </Button>
@@ -675,7 +695,7 @@ const Dashboard = () => {
                   asChild
                 >
                   <a
-                    href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(publicUrl)}&text=${encodeURIComponent("Check out my portfolio!")}`}
+                    href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent("Check out my portfolio!")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -689,7 +709,7 @@ const Dashboard = () => {
                   asChild
                 >
                   <a
-                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(publicUrl)}`}
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

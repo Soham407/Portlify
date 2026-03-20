@@ -27,7 +27,7 @@ import { useEducation } from "@/hooks/useEducation";
 import { useContact } from "@/hooks/useContact";
 import { useCertifications } from "@/hooks/useCertifications";
 import { useToast } from "@/hooks/use-toast";
-import { VALIDATION_RULES, EMPLOYMENT_TYPES, PORTFOLIO_TYPES } from "@/lib/constants";
+import { VALIDATION_RULES, EMPLOYMENT_TYPES, PORTFOLIO_TYPES, VISIBILITY_OPTIONS } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -73,6 +73,7 @@ const Builder = () => {
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [portfolioNameValue, setPortfolioNameValue] = useState("");
   const [portfolioTypeValue, setPortfolioTypeValue] = useState("general");
+  const [visibilityValue, setVisibilityValue] = useState("private");
   const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [bioForm, setBioForm] = useState({ first_name: "", last_name: "", headline: "", bio: "", location: "" });
@@ -137,8 +138,9 @@ const Builder = () => {
     if (portfolio) {
       setPortfolioNameValue(portfolio.name || "");
       setPortfolioTypeValue(portfolio.portfolio_type || "general");
+      setVisibilityValue((portfolio.visibility as string) || (portfolio.is_public ? "public" : "private"));
     }
-  }, [portfolio?.id, portfolio?.name, portfolio?.portfolio_type]);
+  }, [portfolio?.id, portfolio?.name, portfolio?.portfolio_type, portfolio?.visibility, portfolio?.is_public]);
 
   const checkUsername = useCallback(async (value: string) => {
     if (!value) { setUsernameStatus("idle"); return; }
@@ -167,6 +169,14 @@ const Builder = () => {
     if (usernameStatus === "taken" || usernameStatus === "invalid") {
       toast({ title: "Fix username errors first", variant: "destructive" }); return;
     }
+    if (visibilityValue === "public" && !usernameValue.trim()) {
+      toast({
+        title: "Set a username before making this portfolio public",
+        description: "Public portfolios need a username so the public URL can resolve.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       const { error: profileError } = await supabase
         .from("profiles")
@@ -174,22 +184,17 @@ const Builder = () => {
         .eq("id", user!.id);
       if (profileError) throw profileError;
 
-      await updatePortfolio.mutateAsync({ name: portfolioNameValue, portfolio_type: portfolioTypeValue });
+      await updatePortfolio.mutateAsync({
+        name: portfolioNameValue,
+        portfolio_type: portfolioTypeValue,
+        visibility: visibilityValue,
+      });
       await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
       await queryClient.invalidateQueries({ queryKey: ["portfolios-all"] });
       toast({ title: "Settings saved!" });
     } catch (e: any) {
       toast({ title: "Error saving settings", description: e.message, variant: "destructive" });
-    }
-  };
-
-  const handleToggleVisibility = async () => {
-    try {
-      await updatePortfolio.mutateAsync({ is_public: !portfolio?.is_public });
-      toast({ title: portfolio?.is_public ? "Portfolio is now private" : "Portfolio is now public" });
-    } catch (e: any) {
-      toast({ title: "Error updating visibility", description: e.message, variant: "destructive" });
     }
   };
 
@@ -964,27 +969,35 @@ const Builder = () => {
                     {usernameStatus === "available" && <p className="text-xs text-emerald-600">Username is available!</p>}
                   </div>
 
-                  {/* Visibility toggle */}
-                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-                    <div className="flex items-center gap-3">
-                      {portfolio?.is_public
-                        ? <Globe className="h-4 w-4 text-emerald-600" />
-                        : <Lock className="h-4 w-4 text-muted-foreground" />}
-                      <div>
-                        <p className="text-sm font-medium">{portfolio?.is_public ? "Public" : "Private"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {portfolio?.is_public ? "Visible at your public URL" : "Only you can see this portfolio"}
-                        </p>
+                  <div className="space-y-2">
+                    <Label>Visibility</Label>
+                    <Select value={visibilityValue} onValueChange={setVisibilityValue}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {VISIBILITY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <div className="flex items-start gap-3">
+                        {visibilityValue === "public"
+                          ? <Globe className="mt-0.5 h-4 w-4 text-emerald-600" />
+                          : <Lock className="mt-0.5 h-4 w-4 text-muted-foreground" />}
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">
+                            {visibilityValue === "public" ? "Public" : visibilityValue === "unlisted" ? "Unlisted" : "Private"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {visibilityValue === "public" && "Visible on your username URL and ready to share."}
+                            {visibilityValue === "unlisted" && "Only people with your secret share link can open this portfolio."}
+                            {visibilityValue === "private" && "Only you can access this portfolio right now."}
+                          </p>
+                          {visibilityValue === "public" && usernameValue && portfolio?.share_token && <p className="text-xs text-muted-foreground">Public URL: /p/{usernameValue}/{portfolio.share_token}</p>}
+                          {visibilityValue === "unlisted" && portfolio?.share_token && <p className="text-xs text-muted-foreground">Share URL: /share/{portfolio.share_token}</p>}
+                        </div>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleToggleVisibility}
-                      disabled={updatePortfolio.isPending}
-                    >
-                      {portfolio?.is_public ? "Make Private" : "Make Public"}
-                    </Button>
                   </div>
 
                   {/* Portfolio name */}

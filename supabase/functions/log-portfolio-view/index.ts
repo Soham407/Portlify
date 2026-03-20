@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { portfolio_id } = await req.json();
+    const { portfolio_id, share_channel } = await req.json();
     if (!portfolio_id) {
       return new Response(JSON.stringify({ error: "portfolio_id required" }), {
         status: 400,
@@ -40,6 +40,7 @@ serve(async (req) => {
       .from("portfolio_views")
       .insert({
         portfolio_id,
+        share_channel: share_channel || "direct",
         viewer_ip: hashedIp,
         user_agent: userAgent.slice(0, 200),
       });

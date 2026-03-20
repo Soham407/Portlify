@@ -160,3 +160,44 @@ export const DEFAULT_SECTION_ORDER = {
   freelancer: ["bio", "projects", "skills", "experience", "education", "contact"],
   professional: ["bio", "experience", "skills", "projects", "education", "contact"],
 } as const;
+
+export const PORTFOLIO_GOALS = [
+  { value: "job_hunt", label: "Job Hunt", description: "Build a recruiter-ready portfolio for applications." },
+  { value: "freelance", label: "Freelance", description: "Showcase services and client work to win projects." },
+  { value: "student", label: "Student", description: "Highlight learning, projects, and growth potential." },
+  { value: "personal_brand", label: "Personal Brand", description: "Create a polished public profile for your work." },
+] as const;
+
+export const IMPORT_INTENTS = [
+  { value: "manual", label: "Build Manually", description: "Start from scratch and enter details yourself." },
+  { value: "linkedin_pdf", label: "LinkedIn PDF", description: "Upload a LinkedIn export to prefill experience and skills." },
+  { value: "github", label: "GitHub Import", description: "Pull projects from GitHub and refine them in the builder." },
+] as const;
+
+export const STARTER_CONTENT_MODES = [
+  { value: "blank", label: "Blank", description: "Start with an empty portfolio and fill each section yourself." },
+  { value: "prefilled", label: "Prefilled", description: "Start with starter copy and example entries you can edit." },
+] as const;
+
+export const VISIBILITY_OPTIONS = [
+  { value: "private", label: "Private", description: "Only you can access this portfolio." },
+  { value: "public", label: "Public", description: "Visible at your username URL and discoverable." },
+  { value: "unlisted", label: "Unlisted", description: "Accessible only with a secret share link." },
+] as const;
+
+export const PORTFOLIO_SECTIONS = [
+  { id: "bio", label: "Bio" },
+  { id: "projects", label: "Projects" },
+  { id: "skills", label: "Skills" },
+  { id: "experience", label: "Experience" },
+  { id: "education", label: "Education" },
+  { id: "certifications", label: "Certifications" },
+  { id: "contact", label: "Contact" },
+] as const;
+
+export const AI_ACTIONS = [
+  { value: "rewrite", label: "Rewrite", description: "Reword the content while preserving meaning." },
+  { value: "shorten", label: "Shorten", description: "Make the content tighter and more concise." },
+  { value: "strengthen", label: "Strengthen", description: "Increase impact with stronger language and outcomes." },
+  { value: "suggest", label: "Suggest", description: "Show coaching prompts and improvement ideas." },
+] as const;

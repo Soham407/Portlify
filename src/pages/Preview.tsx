@@ -1,18 +1,22 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { usePortfolio } from "@/hooks/usePortfolio";
+import { ArrowLeft, Download, LayoutPanelLeft, PenTool } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import SectionLayoutPicker from "@/components/preview/SectionLayoutPicker";
+import SectionManager from "@/components/preview/SectionManager";
+import { getTemplateComponent } from "@/components/templates";
 import { useBio } from "@/hooks/useBio";
+import { useCertifications } from "@/hooks/useCertifications";
+import { useContact } from "@/hooks/useContact";
+import { useEducation } from "@/hooks/useEducation";
+import { useExperience } from "@/hooks/useExperience";
+import { usePortfolio } from "@/hooks/usePortfolio";
 import { useProjects } from "@/hooks/useProjects";
 import { useSkills } from "@/hooks/useSkills";
-import { useExperience } from "@/hooks/useExperience";
-import { useEducation } from "@/hooks/useEducation";
-import { useContact } from "@/hooks/useContact";
-import { useCertifications } from "@/hooks/useCertifications";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, PenTool, LayoutPanelLeft } from "lucide-react";
-import { getTemplateComponent } from "@/components/templates";
-import SectionLayoutPicker from "@/components/preview/SectionLayoutPicker";
+import { useProfile } from "@/hooks/useProfile";
+import { DEFAULT_SECTION_ORDER } from "@/lib/constants";
+import { normalizeHiddenSections, normalizeSectionOrder } from "@/lib/portfolioSections";
 
 const TEMPLATE_NAMES: Record<string, string> = {
   minimal: "Glass",
@@ -25,11 +29,14 @@ const TEMPLATE_NAMES: Record<string, string> = {
 const Preview = () => {
   const [searchParams] = useSearchParams();
   const portfolioParam = searchParams.get("portfolio") ?? undefined;
-  const { portfolio, isLoading: portfolioLoading, updateSectionLayouts } = usePortfolio(portfolioParam);
+  const { portfolio, isLoading: portfolioLoading, updateSectionLayouts, updateSectionControls } = usePortfolio(portfolioParam);
+  const { profile } = useProfile();
   const portfolioId = portfolio?.id;
   const templateId = portfolio?.template_id ?? "minimal";
   const dashboardHref = "/dashboard";
   const builderHref = portfolioId ? `/builder?portfolio=${portfolioId}` : "/builder";
+  const exportPortfolioHref = portfolioId ? `/export/portfolio?portfolio=${portfolioId}` : "/export/portfolio";
+  const exportResumeHref = portfolioId ? `/export/resume?portfolio=${portfolioId}` : "/export/resume";
 
   const { bio } = useBio(portfolioId);
   const { projects } = useProjects(portfolioId);
@@ -41,37 +48,71 @@ const Preview = () => {
 
   const TemplateComponent = getTemplateComponent(templateId);
   const templateName = TEMPLATE_NAMES[templateId] ?? templateId;
+  const defaultOrderForReset = normalizeSectionOrder(
+    DEFAULT_SECTION_ORDER[(profile?.user_type as keyof typeof DEFAULT_SECTION_ORDER) || "fresher"]
+  );
 
   const [editMode, setEditMode] = useState(false);
   const [sectionLayouts, setSectionLayouts] = useState<Record<string, string>>({});
   const [activeSidebarSection, setActiveSidebarSection] = useState<string | null>(null);
-  const templateRenderKey = `${templateId}:${JSON.stringify(sectionLayouts)}`;
+  const [sectionOrder, setSectionOrder] = useState<string[]>([]);
+  const [hiddenSections, setHiddenSections] = useState<string[]>([]);
+  const templateRenderKey = `${templateId}:${JSON.stringify(sectionLayouts)}:${sectionOrder.join(",")}:${hiddenSections.join(",")}`;
 
   useEffect(() => {
     if (portfolio?.section_layouts) {
       setSectionLayouts(portfolio.section_layouts as Record<string, string>);
     }
-  }, [portfolio]);
+    setSectionOrder(normalizeSectionOrder(portfolio?.section_order ?? defaultOrderForReset));
+    setHiddenSections(normalizeHiddenSections(portfolio?.hidden_sections));
+  }, [defaultOrderForReset, portfolio]);
 
-  // When edit mode is turned off, close the sidebar too
   useEffect(() => {
     if (!editMode) {
       setActiveSidebarSection(null);
     }
   }, [editMode]);
 
+  const persistSectionControls = (nextOrder: string[], nextHidden: string[]) => {
+    setSectionOrder(nextOrder);
+    setHiddenSections(nextHidden);
+    updateSectionControls.mutate({
+      section_order: nextOrder,
+      hidden_sections: nextHidden,
+    });
+  };
+
+  const handleMoveSection = (sectionId: string, direction: -1 | 1) => {
+    const currentIndex = sectionOrder.indexOf(sectionId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= sectionOrder.length) return;
+
+    const nextOrder = [...sectionOrder];
+    [nextOrder[currentIndex], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[currentIndex]];
+    persistSectionControls(nextOrder, hiddenSections);
+  };
+
+  const handleToggleHidden = (sectionId: string) => {
+    const nextHidden = hiddenSections.includes(sectionId)
+      ? hiddenSections.filter((entry) => entry !== sectionId)
+      : [...hiddenSections, sectionId];
+    persistSectionControls(sectionOrder, nextHidden);
+  };
+
+  const handleResetSections = () => {
+    persistSectionControls(defaultOrderForReset, []);
+  };
+
   if (portfolioLoading || (portfolioParam && !portfolio)) {
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
           <div className="container flex h-12 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link to={dashboardHref}>
-                  <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Dashboard
-                </Link>
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to={dashboardHref}>
+                <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Dashboard
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -87,18 +128,25 @@ const Preview = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Preview toolbar */}
       <div className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
-        <div className="container flex h-12 items-center justify-between">
+        <div className="container flex h-12 items-center justify-between gap-3">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to={dashboardHref}>
+              <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Dashboard
+            </Link>
+          </Button>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to={dashboardHref}>
-                <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back to Dashboard
+            <Badge variant="outline">Preview - {templateName}</Badge>
+            <Button size="sm" variant="outline" asChild>
+              <Link to={exportPortfolioHref} target="_blank" rel="noopener noreferrer">
+                <Download className="mr-2 h-3.5 w-3.5" /> Portfolio PDF
               </Link>
             </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">Preview — {templateName}</Badge>
+            <Button size="sm" variant="outline" asChild>
+              <Link to={exportResumeHref} target="_blank" rel="noopener noreferrer">
+                <Download className="mr-2 h-3.5 w-3.5" /> Resume PDF
+              </Link>
+            </Button>
             <Button size="sm" asChild>
               <Link to={builderHref}>
                 <PenTool className="mr-2 h-3.5 w-3.5" /> Edit
@@ -118,30 +166,30 @@ const Preview = () => {
           contact={contact ?? null}
           certifications={certifications ?? []}
           sectionLayouts={sectionLayouts}
+          sectionOrder={sectionOrder}
+          hiddenSections={hiddenSections}
           editMode={editMode}
           onSectionEdit={(section) => setActiveSidebarSection(section)}
         />
       </div>
 
-      {/* Sticky floating Customize Layout button — bottom right */}
       <button
         onClick={() => {
-          setEditMode((v) => {
-            if (v) setActiveSidebarSection(null);
-            return !v;
+          setEditMode((current) => {
+            if (current) setActiveSidebarSection(null);
+            return !current;
           });
         }}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-xl transition-all hover:shadow-2xl hover:scale-105 active:scale-95 ${
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-xl transition-all hover:scale-105 hover:shadow-2xl active:scale-95 ${
           editMode
             ? "bg-primary text-primary-foreground"
-            : "bg-card text-foreground border border-border hover:bg-accent"
+            : "border border-border bg-card text-foreground hover:bg-accent"
         }`}
       >
         <LayoutPanelLeft className="h-4 w-4" />
         {editMode ? "Done Editing" : "Customize Layout"}
       </button>
 
-      {/* Right sidebar layout picker */}
       {activeSidebarSection && (
         <SectionLayoutPicker
           section={activeSidebarSection}
@@ -153,6 +201,18 @@ const Preview = () => {
           }}
           onClose={() => setActiveSidebarSection(null)}
         />
+      )}
+
+      {editMode && (
+        <div className="fixed left-6 top-20 z-40 hidden w-[340px] xl:block">
+          <SectionManager
+            order={sectionOrder}
+            hiddenSections={hiddenSections}
+            onMove={handleMoveSection}
+            onToggleHidden={handleToggleHidden}
+            onReset={handleResetSections}
+          />
+        </div>
       )}
     </div>
   );

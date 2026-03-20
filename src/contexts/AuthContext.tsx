@@ -75,13 +75,10 @@ export const useAuth = () => {
 export const getOnboardingRedirect = async (userId: string): Promise<string> => {
   const { data: profile } = await supabase
     .from("profiles")
-    .select("user_type, career_type, selected_role")
+    .select("onboarding_completed_at")
     .eq("id", userId)
     .single();
 
-  // Step 1 is skippable in the UI, so only force it when no onboarding data exists yet.
-  if (!profile?.user_type && !profile?.career_type && !profile?.selected_role) return "/user-type-selection";
-  if (!profile?.career_type) return "/career-setup";
-  if (!profile?.selected_role) return "/role-selection";
+  if (!profile?.onboarding_completed_at) return "/onboarding";
   return "/dashboard";
 };

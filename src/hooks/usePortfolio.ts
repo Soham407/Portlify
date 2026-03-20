@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_SECTION_ORDER } from "@/lib/constants";
 
+const generateShareToken = () => {
+  return Array.from(crypto.getRandomValues(new Uint8Array(18)))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 export const usePortfolio = (specificPortfolioId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -99,6 +105,10 @@ export const usePortfolio = (specificPortfolioId?: string) => {
           name: opts?.name || "My Portfolio",
           portfolio_type: opts?.portfolio_type || "general",
           is_default: isFirst,
+          visibility: "private",
+          is_public: false,
+          hidden_sections: [],
+          share_token: generateShareToken(),
           section_order: [...sectionOrder] as string[], // Convert readonly to mutable
         })
         .select()
@@ -125,7 +135,10 @@ export const usePortfolio = (specificPortfolioId?: string) => {
           portfolio_type: source.portfolio_type,
           template_id: source.template_id,
           section_layouts: source.section_layouts,
+          hidden_sections: source.hidden_sections || [],
+          share_token: generateShareToken(),
           is_public: false,
+          visibility: "private",
           is_default: false,
           section_order: source.section_order,
         })
@@ -174,13 +187,17 @@ export const usePortfolio = (specificPortfolioId?: string) => {
       const targetId = updateId || specificPortfolioId || portfolio?.id;
       if (!targetId) throw new Error("No portfolio to update");
 
-      if (rest.is_public === true) {
-        const { error: unsetError } = await supabase
-          .from("portfolios")
-          .update({ is_public: false })
-          .eq("user_id", user!.id)
-          .neq("id", targetId);
-        if (unsetError) throw unsetError;
+      if (rest.visibility) {
+        rest.is_public = rest.visibility === "public";
+      }
+      if (rest.is_public === true && !rest.visibility) {
+        rest.visibility = "public";
+      }
+      if (rest.is_public === false && !rest.visibility) {
+        rest.visibility = "private";
+      }
+      if ((rest.visibility === "public" || rest.visibility === "unlisted") && !rest.share_token) {
+        rest.share_token = portfolio?.share_token || generateShareToken();
       }
 
       const { data, error } = await supabase
@@ -216,6 +233,25 @@ export const usePortfolio = (specificPortfolioId?: string) => {
     },
   });
 
+  const updateSectionControls = useMutation({
+    mutationFn: async (updates: { section_order?: string[]; hidden_sections?: string[] }) => {
+      const targetId = specificPortfolioId || portfolio?.id;
+      if (!targetId) throw new Error("No portfolio to update");
+      const { data, error } = await supabase
+        .from("portfolios")
+        .update(updates)
+        .eq("id", targetId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolios-all"] });
+    },
+  });
+
   const deletePortfolio = useMutation({
     mutationFn: async (portfolioId: string) => {
       const { error } = await supabase.from("portfolios").delete().eq("id", portfolioId);
@@ -237,6 +273,7 @@ export const usePortfolio = (specificPortfolioId?: string) => {
     setDefaultPortfolio,
     updatePortfolio,
     updateSectionLayouts,
+    updateSectionControls,
     deletePortfolio,
   };
 };

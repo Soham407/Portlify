@@ -342,6 +342,7 @@ export type Database = {
         Row: {
           id: string
           portfolio_id: string
+          share_channel: string | null
           user_agent: string | null
           viewed_at: string
           viewer_ip: string | null
@@ -349,6 +350,7 @@ export type Database = {
         Insert: {
           id?: string
           portfolio_id: string
+          share_channel?: string | null
           user_agent?: string | null
           viewed_at?: string
           viewer_ip?: string | null
@@ -356,6 +358,7 @@ export type Database = {
         Update: {
           id?: string
           portfolio_id?: string
+          share_channel?: string | null
           user_agent?: string | null
           viewed_at?: string
           viewer_ip?: string | null
@@ -382,6 +385,8 @@ export type Database = {
           moderation_status: string | null
           name: string | null
           portfolio_type: string | null
+          hidden_sections: string[] | null
+          share_token: string | null
           section_layouts: Json | null
           section_order: string[] | null
           template_id: string | null
@@ -400,6 +405,8 @@ export type Database = {
           moderation_status?: string | null
           name?: string | null
           portfolio_type?: string | null
+          hidden_sections?: string[] | null
+          share_token?: string | null
           section_layouts?: Json | null
           section_order?: string[] | null
           template_id?: string | null
@@ -418,6 +425,8 @@ export type Database = {
           moderation_status?: string | null
           name?: string | null
           portfolio_type?: string | null
+          hidden_sections?: string[] | null
+          share_token?: string | null
           section_layouts?: Json | null
           section_order?: string[] | null
           template_id?: string | null
@@ -441,15 +450,20 @@ export type Database = {
           is_public: boolean | null
           linkedin_url: string | null
           location: string | null
+          onboarding_completed_at: string | null
+          portfolio_goal: string | null
+          preferred_template: string | null
           role: string | null
           selected_role: string | null
           selected_template: string | null
           skill_level: string | null
+          starter_content_mode: string | null
           twitter_url: string | null
           updated_at: string
           user_type: string | null
           username: string | null
           website_url: string | null
+          import_intent: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -464,15 +478,20 @@ export type Database = {
           is_public?: boolean | null
           linkedin_url?: string | null
           location?: string | null
+          onboarding_completed_at?: string | null
+          portfolio_goal?: string | null
+          preferred_template?: string | null
           role?: string | null
           selected_role?: string | null
           selected_template?: string | null
           skill_level?: string | null
+          starter_content_mode?: string | null
           twitter_url?: string | null
           updated_at?: string
           user_type?: string | null
           username?: string | null
           website_url?: string | null
+          import_intent?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -487,15 +506,20 @@ export type Database = {
           is_public?: boolean | null
           linkedin_url?: string | null
           location?: string | null
+          onboarding_completed_at?: string | null
+          portfolio_goal?: string | null
+          preferred_template?: string | null
           role?: string | null
           selected_role?: string | null
           selected_template?: string | null
           skill_level?: string | null
+          starter_content_mode?: string | null
           twitter_url?: string | null
           updated_at?: string
           user_type?: string | null
           username?: string | null
           website_url?: string | null
+          import_intent?: string | null
         }
         Relationships: []
       }
