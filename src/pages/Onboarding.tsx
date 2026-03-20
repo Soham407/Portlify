@@ -614,9 +614,7 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary-glow)/0.16),_transparent_28%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--surface)))]" />
-
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary-glow)/0.16),_transparent_28%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--surface)))]">
       <div className="relative mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-10">
         <div className="grid w-full gap-5 xl:grid-cols-[268px_minmax(0,1fr)] xl:gap-8">
           <aside className="hidden xl:block">
