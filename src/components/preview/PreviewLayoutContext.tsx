@@ -4,10 +4,10 @@ type PreviewLayoutContextValue = {
   editMode: boolean;
   draggedSectionId: string | null;
   activeDropTargetId: string | null;
-  onSectionPressStart: (sectionId: string, pointerId: number, clientX: number, clientY: number) => void;
-  onSectionPressMove: (pointerId: number, clientX: number, clientY: number) => void;
-  onSectionPressEnd: (pointerId: number) => void;
-  onSectionPressCancel: (pointerId: number) => void;
+  onDragHandleStart: (sectionId: string, pointerId: number) => void;
+  onDragHandleMove: (pointerId: number, clientX: number, clientY: number) => void;
+  onDragHandleEnd: (pointerId: number) => void;
+  onDragHandleCancel: (pointerId: number) => void;
   onToggleHidden?: (sectionId: string) => void;
 };
 

@@ -31,9 +31,6 @@ const TEMPLATE_NAMES: Record<string, string> = {
   photography: "Brutalist",
 };
 
-const LONG_PRESS_DELAY_MS = 800;
-const PRESS_MOVE_CANCEL_THRESHOLD_PX = 24;
-
 const areSectionListsEqual = (left: string[], right: string[]) => (
   left.length === right.length && left.every((entry, index) => entry === right[index])
 );
@@ -76,7 +73,6 @@ const Preview = () => {
   const [isHiddenTrayOpen, setIsHiddenTrayOpen] = useState(false);
   const sectionLayoutSaveRef = useRef<number | null>(null);
   const sectionControlsSaveRef = useRef<number | null>(null);
-  const longPressTimerRef = useRef<number | null>(null);
   const pendingLayoutsRef = useRef<Record<string, string> | null>(null);
   const pendingControlsRef = useRef<{ section_order: string[]; hidden_sections: string[]; not_applicable_sections: string[] } | null>(null);
   const lastSyncedLayoutsRef = useRef<Record<string, string>>({});
@@ -86,11 +82,9 @@ const Preview = () => {
   const sectionOrderRef = useRef<string[]>([]);
   const hiddenSectionsRef = useRef<string[]>([]);
   const notApplicableSectionsRef = useRef<string[]>([]);
-  const pressGestureRef = useRef<{
+  const dragSessionRef = useRef<{
     sectionId: string;
     pointerId: number;
-    startX: number;
-    startY: number;
     initialOrder: string[];
   } | null>(null);
 
@@ -189,11 +183,6 @@ const Preview = () => {
 
   useEffect(() => {
     return () => {
-      if (longPressTimerRef.current) {
-        window.clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-
       if (sectionLayoutSaveRef.current) {
         window.clearTimeout(sectionLayoutSaveRef.current);
         sectionLayoutSaveRef.current = null;
@@ -223,11 +212,7 @@ const Preview = () => {
       setActiveSidebarSection(null);
       setDraggedSectionId(null);
       setActiveDropTargetId(null);
-      pressGestureRef.current = null;
-      if (longPressTimerRef.current) {
-        window.clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
+      dragSessionRef.current = null;
       setIsHiddenTrayOpen(false);
     }
   }, [editMode]);
@@ -323,22 +308,13 @@ const Preview = () => {
     persistSectionControls([...defaultSectionsWithoutContact, ...customSectionIds, "contact"], [], notApplicableSections);
   };
 
-  const clearLongPressTimer = () => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  const resetPressGesture = (options?: { revertOrder?: boolean }) => {
-    clearLongPressTimer();
-
-    if (options?.revertOrder && pressGestureRef.current) {
-      setSectionOrder(pressGestureRef.current.initialOrder);
-      sectionOrderRef.current = pressGestureRef.current.initialOrder;
+  const resetDragSession = (options?: { revertOrder?: boolean }) => {
+    if (options?.revertOrder && dragSessionRef.current) {
+      setSectionOrder(dragSessionRef.current.initialOrder);
+      sectionOrderRef.current = dragSessionRef.current.initialOrder;
     }
 
-    pressGestureRef.current = null;
+    dragSessionRef.current = null;
     setDraggedSectionId(null);
     setActiveDropTargetId(null);
   };
@@ -358,41 +334,21 @@ const Preview = () => {
     return null;
   };
 
-  const handleSectionPressStart = (sectionId: string, pointerId: number, clientX: number, clientY: number) => {
+  const handleDragHandleStart = (sectionId: string, pointerId: number) => {
     if (!editMode) return;
 
-    clearLongPressTimer();
-    pressGestureRef.current = {
+    dragSessionRef.current = {
       sectionId,
       pointerId,
-      startX: clientX,
-      startY: clientY,
       initialOrder: [...sectionOrderRef.current],
     };
-
-    longPressTimerRef.current = window.setTimeout(() => {
-      const activePress = pressGestureRef.current;
-      if (!activePress || activePress.pointerId !== pointerId || activePress.sectionId !== sectionId) {
-        return;
-      }
-
-      setDraggedSectionId(sectionId);
-      setActiveDropTargetId(sectionId);
-    }, LONG_PRESS_DELAY_MS);
+    setDraggedSectionId(sectionId);
+    setActiveDropTargetId(sectionId);
   };
 
-  const handleSectionPressMove = (pointerId: number, clientX: number, clientY: number) => {
-    const activePress = pressGestureRef.current;
-    if (!activePress || activePress.pointerId !== pointerId) return;
-
-    const movedDistance = Math.hypot(clientX - activePress.startX, clientY - activePress.startY);
-
-    if (!draggedSectionId) {
-      if (movedDistance > PRESS_MOVE_CANCEL_THRESHOLD_PX) {
-        resetPressGesture();
-      }
-      return;
-    }
+  const handleDragHandleMove = (pointerId: number, clientX: number, clientY: number) => {
+    const activeDrag = dragSessionRef.current;
+    if (!activeDrag || activeDrag.pointerId !== pointerId || !draggedSectionId) return;
 
     const targetSectionId = getSectionIdFromPoint(clientX, clientY);
     if (!targetSectionId || targetSectionId === "bio") {
@@ -421,26 +377,26 @@ const Preview = () => {
     setSectionOrder(normalizedOrder);
   };
 
-  const handleSectionPressEnd = (pointerId: number) => {
-    const activePress = pressGestureRef.current;
-    if (!activePress || activePress.pointerId !== pointerId) return;
+  const handleDragHandleEnd = (pointerId: number) => {
+    const activeDrag = dragSessionRef.current;
+    if (!activeDrag || activeDrag.pointerId !== pointerId) return;
 
     const shouldPersist = Boolean(
-      draggedSectionId && !areSectionListsEqual(activePress.initialOrder, sectionOrderRef.current)
+      draggedSectionId && !areSectionListsEqual(activeDrag.initialOrder, sectionOrderRef.current)
     );
     const nextOrder = sectionOrderRef.current;
 
-    resetPressGesture();
+    resetDragSession();
 
     if (shouldPersist) {
       persistSectionControls(nextOrder, hiddenSectionsRef.current, notApplicableSectionsRef.current);
     }
   };
 
-  const handleSectionPressCancel = (pointerId: number) => {
-    const activePress = pressGestureRef.current;
-    if (!activePress || activePress.pointerId !== pointerId) return;
-    resetPressGesture({ revertOrder: true });
+  const handleDragHandleCancel = (pointerId: number) => {
+    const activeDrag = dragSessionRef.current;
+    if (!activeDrag || activeDrag.pointerId !== pointerId) return;
+    resetDragSession({ revertOrder: true });
   };
 
   const hiddenSectionItems = hiddenSections.map((sectionId) => {
@@ -549,10 +505,10 @@ const Preview = () => {
           editMode,
           draggedSectionId,
           activeDropTargetId,
-          onSectionPressStart: handleSectionPressStart,
-          onSectionPressMove: handleSectionPressMove,
-          onSectionPressEnd: handleSectionPressEnd,
-          onSectionPressCancel: handleSectionPressCancel,
+          onDragHandleStart: handleDragHandleStart,
+          onDragHandleMove: handleDragHandleMove,
+          onDragHandleEnd: handleDragHandleEnd,
+          onDragHandleCancel: handleDragHandleCancel,
           onToggleHidden: handleToggleHidden,
         }}
       >
