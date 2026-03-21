@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, LayoutPanelLeft, PenTool, Share2, Copy, CheckCheck, Settings } from "lucide-react";
+import { ArrowLeft, LayoutPanelLeft, PenTool, Share2, Copy, CheckCheck, Settings, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import SectionLayoutPicker from "@/components/preview/SectionLayoutPicker";
@@ -19,8 +19,8 @@ import { useProjects } from "@/hooks/useProjects";
 import { useSkills } from "@/hooks/useSkills";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "@/hooks/use-toast";
-import { DEFAULT_SECTION_ORDER } from "@/lib/constants";
-import { getOrderedCustomSectionIds, normalizeHiddenSections, normalizeSectionOrder } from "@/lib/portfolioSections";
+import { DEFAULT_SECTION_ORDER, PORTFOLIO_SECTIONS } from "@/lib/constants";
+import { getOrderedCustomSectionIds, isCustomSectionId, normalizeHiddenSections, normalizeSectionOrder } from "@/lib/portfolioSections";
 import { PreviewLayoutProvider } from "@/components/preview/PreviewLayoutContext";
 
 const TEMPLATE_NAMES: Record<string, string> = {
@@ -30,6 +30,13 @@ const TEMPLATE_NAMES: Record<string, string> = {
   corporate: "Editorial",
   photography: "Brutalist",
 };
+
+const LONG_PRESS_DELAY_MS = 350;
+const PRESS_MOVE_CANCEL_THRESHOLD_PX = 10;
+
+const areSectionListsEqual = (left: string[], right: string[]) => (
+  left.length === right.length && left.every((entry, index) => entry === right[index])
+);
 
 const Preview = () => {
   const [searchParams] = useSearchParams();
@@ -65,14 +72,27 @@ const Preview = () => {
   const [hiddenSections, setHiddenSections] = useState<string[]>([]);
   const [notApplicableSections, setNotApplicableSections] = useState<string[]>([]);
   const [draggedSectionId, setDraggedSectionId] = useState<string | null>(null);
+  const [activeDropTargetId, setActiveDropTargetId] = useState<string | null>(null);
+  const [isHiddenTrayOpen, setIsHiddenTrayOpen] = useState(false);
   const sectionLayoutSaveRef = useRef<number | null>(null);
   const sectionControlsSaveRef = useRef<number | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
   const pendingLayoutsRef = useRef<Record<string, string> | null>(null);
   const pendingControlsRef = useRef<{ section_order: string[]; hidden_sections: string[]; not_applicable_sections: string[] } | null>(null);
   const lastSyncedLayoutsRef = useRef<Record<string, string>>({});
   const lastSyncedOrderRef = useRef<string[]>([]);
   const lastSyncedHiddenRef = useRef<string[]>([]);
   const lastSyncedNotApplicableRef = useRef<string[]>([]);
+  const sectionOrderRef = useRef<string[]>([]);
+  const hiddenSectionsRef = useRef<string[]>([]);
+  const notApplicableSectionsRef = useRef<string[]>([]);
+  const pressGestureRef = useRef<{
+    sectionId: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    initialOrder: string[];
+  } | null>(null);
 
   useEffect(() => {
     const nextLayouts = (portfolio?.section_layouts as Record<string, string>) ?? {};
@@ -85,6 +105,9 @@ const Preview = () => {
     lastSyncedOrderRef.current = nextOrder;
     lastSyncedHiddenRef.current = nextHidden;
     lastSyncedNotApplicableRef.current = nextNotApplicable;
+    sectionOrderRef.current = nextOrder;
+    hiddenSectionsRef.current = nextHidden;
+    notApplicableSectionsRef.current = nextNotApplicable;
 
     setSectionLayouts(nextLayouts);
     setSectionOrder(nextOrder);
@@ -100,6 +123,9 @@ const Preview = () => {
     setSectionOrder(lastSyncedOrderRef.current);
     setHiddenSections(lastSyncedHiddenRef.current);
     setNotApplicableSections(lastSyncedNotApplicableRef.current);
+    sectionOrderRef.current = lastSyncedOrderRef.current;
+    hiddenSectionsRef.current = lastSyncedHiddenRef.current;
+    notApplicableSectionsRef.current = lastSyncedNotApplicableRef.current;
   }, []);
 
   const executeSectionLayoutsPersist = useCallback((nextLayouts: Record<string, string>) => {
@@ -163,6 +189,11 @@ const Preview = () => {
 
   useEffect(() => {
     return () => {
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
       if (sectionLayoutSaveRef.current) {
         window.clearTimeout(sectionLayoutSaveRef.current);
         sectionLayoutSaveRef.current = null;
@@ -190,8 +221,34 @@ const Preview = () => {
   useEffect(() => {
     if (!editMode) {
       setActiveSidebarSection(null);
+      setDraggedSectionId(null);
+      setActiveDropTargetId(null);
+      pressGestureRef.current = null;
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      setIsHiddenTrayOpen(false);
     }
   }, [editMode]);
+
+  useEffect(() => {
+    sectionOrderRef.current = sectionOrder;
+  }, [sectionOrder]);
+
+  useEffect(() => {
+    hiddenSectionsRef.current = hiddenSections;
+  }, [hiddenSections]);
+
+  useEffect(() => {
+    notApplicableSectionsRef.current = notApplicableSections;
+  }, [notApplicableSections]);
+
+  useEffect(() => {
+    if (hiddenSections.length === 0) {
+      setIsHiddenTrayOpen(false);
+    }
+  }, [hiddenSections.length]);
 
   const queueSectionControlsPersist = (nextOrder: string[], nextHidden: string[], nextNotApplicable: string[]) => {
     if (sectionControlsSaveRef.current) {
@@ -228,6 +285,9 @@ const Preview = () => {
     setSectionOrder(normalizedOrder);
     setHiddenSections(nextHidden);
     setNotApplicableSections(nextNotApplicable);
+    sectionOrderRef.current = normalizedOrder;
+    hiddenSectionsRef.current = nextHidden;
+    notApplicableSectionsRef.current = nextNotApplicable;
     queueSectionControlsPersist(normalizedOrder, nextHidden, nextNotApplicable);
   };
 
@@ -246,7 +306,15 @@ const Preview = () => {
       ? hiddenSections.filter((entry) => entry !== sectionId)
       : [...hiddenSections, sectionId];
     const nextNotApplicable = notApplicableSections.filter((entry) => entry !== sectionId);
+    if (nextHidden.length > 0) {
+      setIsHiddenTrayOpen(true);
+    }
     persistSectionControls(sectionOrder, nextHidden, nextNotApplicable);
+  };
+
+  const handleRestoreHiddenSection = (sectionId: string) => {
+    const nextHidden = hiddenSections.filter((entry) => entry !== sectionId);
+    persistSectionControls(sectionOrder, nextHidden, notApplicableSections);
   };
 
   const handleResetSections = () => {
@@ -255,17 +323,141 @@ const Preview = () => {
     persistSectionControls([...defaultSectionsWithoutContact, ...customSectionIds, "contact"], [], notApplicableSections);
   };
 
-  const handleDropSection = (targetSectionId: string) => {
-    if (!draggedSectionId || draggedSectionId === targetSectionId) return;
-    const nextOrder = [...sectionOrder];
-    const fromIndex = nextOrder.indexOf(draggedSectionId);
-    const targetIndex = nextOrder.indexOf(targetSectionId);
-    if (fromIndex < 0 || targetIndex < 0) return;
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const resetPressGesture = (options?: { revertOrder?: boolean }) => {
+    clearLongPressTimer();
+
+    if (options?.revertOrder && pressGestureRef.current) {
+      setSectionOrder(pressGestureRef.current.initialOrder);
+      sectionOrderRef.current = pressGestureRef.current.initialOrder;
+    }
+
+    pressGestureRef.current = null;
+    setDraggedSectionId(null);
+    setActiveDropTargetId(null);
+  };
+
+  const getSectionIdFromPoint = (clientX: number, clientY: number) => {
+    const elements = document.elementsFromPoint(clientX, clientY);
+
+    for (const element of elements) {
+      if (!(element instanceof HTMLElement)) continue;
+      const sectionElement = element.closest<HTMLElement>("[data-preview-section-id]");
+      const sectionId = sectionElement?.dataset.previewSectionId;
+      if (sectionId) {
+        return sectionId;
+      }
+    }
+
+    return null;
+  };
+
+  const handleSectionPressStart = (sectionId: string, pointerId: number, clientX: number, clientY: number) => {
+    if (!editMode) return;
+
+    clearLongPressTimer();
+    pressGestureRef.current = {
+      sectionId,
+      pointerId,
+      startX: clientX,
+      startY: clientY,
+      initialOrder: [...sectionOrderRef.current],
+    };
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      const activePress = pressGestureRef.current;
+      if (!activePress || activePress.pointerId !== pointerId || activePress.sectionId !== sectionId) {
+        return;
+      }
+
+      setDraggedSectionId(sectionId);
+      setActiveDropTargetId(sectionId);
+    }, LONG_PRESS_DELAY_MS);
+  };
+
+  const handleSectionPressMove = (pointerId: number, clientX: number, clientY: number) => {
+    const activePress = pressGestureRef.current;
+    if (!activePress || activePress.pointerId !== pointerId) return;
+
+    const movedDistance = Math.hypot(clientX - activePress.startX, clientY - activePress.startY);
+
+    if (!draggedSectionId) {
+      if (movedDistance > PRESS_MOVE_CANCEL_THRESHOLD_PX) {
+        resetPressGesture();
+      }
+      return;
+    }
+
+    const targetSectionId = getSectionIdFromPoint(clientX, clientY);
+    if (!targetSectionId || targetSectionId === "bio") {
+      setActiveDropTargetId(null);
+      return;
+    }
+
+    setActiveDropTargetId(targetSectionId);
+
+    if (targetSectionId === draggedSectionId) return;
+
+    const currentOrder = sectionOrderRef.current;
+    const fromIndex = currentOrder.indexOf(draggedSectionId);
+    const targetIndex = currentOrder.indexOf(targetSectionId);
+
+    if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return;
+
+    const nextOrder = [...currentOrder];
     nextOrder.splice(fromIndex, 1);
     nextOrder.splice(targetIndex, 0, draggedSectionId);
-    setDraggedSectionId(null);
-    persistSectionControls(nextOrder, hiddenSections, notApplicableSections);
+
+    const normalizedOrder = normalizeSectionOrder(nextOrder);
+    if (areSectionListsEqual(normalizedOrder, currentOrder)) return;
+
+    sectionOrderRef.current = normalizedOrder;
+    setSectionOrder(normalizedOrder);
   };
+
+  const handleSectionPressEnd = (pointerId: number) => {
+    const activePress = pressGestureRef.current;
+    if (!activePress || activePress.pointerId !== pointerId) return;
+
+    const shouldPersist = Boolean(
+      draggedSectionId && !areSectionListsEqual(activePress.initialOrder, sectionOrderRef.current)
+    );
+    const nextOrder = sectionOrderRef.current;
+
+    resetPressGesture();
+
+    if (shouldPersist) {
+      persistSectionControls(nextOrder, hiddenSectionsRef.current, notApplicableSectionsRef.current);
+    }
+  };
+
+  const handleSectionPressCancel = (pointerId: number) => {
+    const activePress = pressGestureRef.current;
+    if (!activePress || activePress.pointerId !== pointerId) return;
+    resetPressGesture({ revertOrder: true });
+  };
+
+  const hiddenSectionItems = hiddenSections.map((sectionId) => {
+    if (isCustomSectionId(sectionId)) {
+      const customSection = customSections?.find((section) => `custom:${section.id}` === sectionId);
+      return {
+        id: sectionId,
+        label: customSection?.title?.trim() || "Custom section",
+      };
+    }
+
+    const builtInSection = PORTFOLIO_SECTIONS.find((section) => section.id === sectionId);
+    return {
+      id: sectionId,
+      label: builtInSection?.label ?? sectionId,
+    };
+  });
 
   const shareUrl = portfolio?.visibility === "unlisted"
     ? `${window.location.origin}/share/${portfolio?.share_token}`
@@ -356,9 +548,11 @@ const Preview = () => {
         value={{
           editMode,
           draggedSectionId,
-          onDragStart: setDraggedSectionId,
-          onDrop: handleDropSection,
-          onDragEnd: () => setDraggedSectionId(null),
+          activeDropTargetId,
+          onSectionPressStart: handleSectionPressStart,
+          onSectionPressMove: handleSectionPressMove,
+          onSectionPressEnd: handleSectionPressEnd,
+          onSectionPressCancel: handleSectionPressCancel,
           onToggleHidden: handleToggleHidden,
         }}
       >
@@ -381,6 +575,49 @@ const Preview = () => {
           />
         </div>
       </PreviewLayoutProvider>
+
+      {editMode && hiddenSectionItems.length > 0 && (
+        <div className="fixed bottom-24 left-6 z-40 w-[min(22rem,calc(100vw-3rem))] rounded-2xl border border-border bg-card/95 p-3 shadow-2xl backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setIsHiddenTrayOpen((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-1 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                <Eye className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Hidden sections</p>
+                <p className="text-xs text-muted-foreground">
+                  Restore hidden sections without resetting the whole layout.
+                </p>
+              </div>
+            </div>
+            {isHiddenTrayOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {isHiddenTrayOpen && (
+            <div className="mt-3 space-y-2">
+              {hiddenSectionItems.map((section) => (
+                <div
+                  key={section.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/80 px-3 py-2"
+                >
+                  <span className="truncate text-sm font-medium text-foreground">{section.label}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleRestoreHiddenSection(section.id)}
+                  >
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <button
         onClick={() => {
