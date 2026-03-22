@@ -261,6 +261,42 @@ export type Database = {
           },
         ]
       }
+      landing_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          least_liked_feature: string
+          liked_feature: string
+          page_path: string
+          persona: string
+          signup_blocker: string
+          user_id: string | null
+          wanted_feature: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          least_liked_feature: string
+          liked_feature: string
+          page_path?: string
+          persona: string
+          signup_blocker: string
+          user_id?: string | null
+          wanted_feature: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          least_liked_feature?: string
+          liked_feature?: string
+          page_path?: string
+          persona?: string
+          signup_blocker?: string
+          user_id?: string | null
+          wanted_feature?: string
+        }
+        Relationships: []
+      }
       experiences: {
         Row: {
           company_name: string

@@ -4,7 +4,6 @@ import {
   LogOut,
   Plus,
   Settings,
-  Share2,
   TrendingUp,
   Users,
   Zap,
@@ -37,12 +36,11 @@ import { useExperience } from "@/hooks/useExperience";
 import { useEducation } from "@/hooks/useEducation";
 import { useContact } from "@/hooks/useContact";
 import { useCertifications } from "@/hooks/useCertifications";
+import { usePortfolioCardPreviews } from "@/hooks/usePortfolioCardPreviews";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { VISIBILITY_OPTIONS } from "@/lib/constants";
 import {
-  canSharePortfolio,
-  getPortfolioPublicUrl,
   getPortfolioShareUrl,
 } from "@/lib/portfolioSharing";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -84,6 +82,10 @@ const Dashboard = () => {
     deletePortfolio,
     updatePortfolio,
   } = usePortfolio(selectedPortfolioId);
+  const { previews: portfolioCardPreviews } = usePortfolioCardPreviews(
+    allPortfolios,
+    profile?.user_type
+  );
 
   const portfolioId = portfolio?.id;
   const { bio } = useBio(portfolioId);
@@ -95,7 +97,6 @@ const Dashboard = () => {
   const { certifications } = useCertifications(portfolioId);
   const { viewCount, completion, isLoading: metricsLoading } = useDashboardMetrics(portfolioId);
 
-  const selectedPortfolio = allPortfolios.find((item) => item.id === portfolioId) ?? portfolio;
   const sharePortfolio =
     allPortfolios.find((item) => item.id === sharePortfolioId) ??
     (portfolio?.id === sharePortfolioId ? portfolio : undefined);
@@ -107,15 +108,6 @@ const Dashboard = () => {
     origin: window.location.origin,
     username: profile?.username,
     portfolio: sharePortfolio,
-  });
-  const shareButtonEnabled = canSharePortfolio({
-    username: profile?.username,
-    portfolio,
-  });
-  const selectedPortfolioPublicUrl = getPortfolioPublicUrl({
-    origin: window.location.origin,
-    username: profile?.username,
-    portfolio: selectedPortfolio,
   });
 
   useEffect(() => {
@@ -586,6 +578,7 @@ const Dashboard = () => {
                 <PortfolioCard
                   key={item.id}
                   portfolio={item}
+                  preview={portfolioCardPreviews[item.id]}
                   isSelected={item.id === portfolioId}
                   viewCount={viewCount}
                   canDelete={allPortfolios.length > 1}
@@ -598,36 +591,6 @@ const Dashboard = () => {
                   onDelete={handleDelete}
                 />
               ))}
-            </div>
-          </div>
-
-          <div className="surface-wood mt-6 rounded-[1.7rem] p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-sm">
-                  <Share2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Share Your Portfolio</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {!profile?.username
-                      ? "Set a username in settings to get a public URL."
-                      : selectedPortfolio?.visibility === "unlisted"
-                        ? `${selectedPortfolio?.name || "Selected portfolio"} uses a private share link.`
-                        : selectedPortfolioPublicUrl || `/p/${profile.username}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="hero"
-                  size="sm"
-                  disabled={!shareButtonEnabled}
-                  onClick={() => handleOpenShare(portfolioId)}
-                >
-                  Share Portfolio
-                </Button>
-              </div>
             </div>
           </div>
         </motion.div>

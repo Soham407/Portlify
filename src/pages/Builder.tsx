@@ -35,7 +35,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { normalizeImportedDate, type ParsedContact } from "@/lib/imports";
 import { getPortfolioPublicUrl, getPortfolioShareUrl } from "@/lib/portfolioSharing";
 import { Switch } from "@/components/ui/switch";
-import { createCustomSectionId } from "@/lib/portfolioSections";
+import {
+  canSectionBeMarkedNotApplicable,
+  createCustomSectionId,
+  normalizeNotApplicableSections,
+} from "@/lib/portfolioSections";
 
 type Section = "bio" | "projects" | "skills" | "experience" | "education" | "certifications" | "custom" | "contact" | "settings";
 type CustomSectionDraft = { title: string; body: string };
@@ -120,7 +124,7 @@ const Builder = () => {
   const savingCustomSectionIdsRef = useRef<string[]>([]);
   const flushPendingCustomSectionDraftsRef = useRef<(options?: { silent?: boolean }) => void>(() => {});
   const hiddenSections = new Set(((portfolio?.hidden_sections as string[] | null) || []));
-  const notApplicableSections = new Set(((portfolio?.not_applicable_sections as string[] | null) || []));
+  const notApplicableSections = new Set(normalizeNotApplicableSections(portfolio?.not_applicable_sections));
   const isSectionNotApplicable = (sectionId: string) => notApplicableSections.has(sectionId);
   const normalizedUsernameValue = normalizeUsername(usernameValue);
   const publicPortfolioUrl = getPortfolioPublicUrl({
@@ -135,7 +139,9 @@ const Builder = () => {
   });
 
   const toggleNotApplicable = async (sectionId: string, enabled: boolean) => {
-    const current = ((portfolio?.not_applicable_sections as string[] | null) || []).filter(Boolean);
+    if (!canSectionBeMarkedNotApplicable(sectionId)) return;
+
+    const current = normalizeNotApplicableSections(portfolio?.not_applicable_sections);
     const next = enabled
       ? Array.from(new Set([...current, sectionId]))
       : current.filter((entry) => entry !== sectionId);
@@ -520,7 +526,7 @@ const Builder = () => {
   };
 
   const ensureSectionApplicable = async (sectionId: string) => {
-    const current = ((portfolio?.not_applicable_sections as string[] | null) || []).filter(Boolean);
+    const current = normalizeNotApplicableSections(portfolio?.not_applicable_sections);
     if (!current.includes(sectionId)) return;
     await updateSectionControls.mutateAsync({
       not_applicable_sections: current.filter((entry) => entry !== sectionId),
@@ -761,18 +767,24 @@ const Builder = () => {
   const progressPct = Math.round((filledCount / progressSections.length) * 100);
   const ActiveIcon = sections.find((s) => s.id === activeSection)?.icon || User;
   const activeLabel = sections.find((s) => s.id === activeSection)?.label || "";
-  const renderNotApplicableControl = (sectionId: string, label: string) => (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-      <div>
-        <p className="text-sm font-medium">Mark {label} as Not Applicable</p>
-        <p className="text-xs text-muted-foreground">Hide it from preview/public/export while counting it as intentional.</p>
+  const renderNotApplicableControl = (sectionId: string, label: string) => {
+    if (!canSectionBeMarkedNotApplicable(sectionId)) {
+      return null;
+    }
+
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+        <div>
+          <p className="text-sm font-medium">Mark {label} as Not Applicable</p>
+          <p className="text-xs text-muted-foreground">Hide it from preview/public/export while counting it as intentional.</p>
+        </div>
+        <Switch
+          checked={isSectionNotApplicable(sectionId)}
+          onCheckedChange={(checked) => void toggleNotApplicable(sectionId, checked)}
+        />
       </div>
-      <Switch
-        checked={isSectionNotApplicable(sectionId)}
-        onCheckedChange={(checked) => void toggleNotApplicable(sectionId, checked)}
-      />
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="app-shell flex min-h-screen flex-col">

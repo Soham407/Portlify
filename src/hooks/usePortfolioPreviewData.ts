@@ -1,6 +1,10 @@
 import type { PortfolioData } from "@/components/templates";
 import { DEFAULT_SECTION_ORDER } from "@/lib/constants";
-import { normalizeHiddenSections, normalizeSectionOrder } from "@/lib/portfolioSections";
+import {
+  normalizeHiddenSections,
+  normalizeNotApplicableSections,
+  normalizeSectionOrder,
+} from "@/lib/portfolioSections";
 import { useBio } from "@/hooks/useBio";
 import { useCertifications } from "@/hooks/useCertifications";
 import { useContact } from "@/hooks/useContact";
@@ -36,7 +40,7 @@ export const usePortfolioPreviewData = (specificPortfolioId?: string) => {
     ...customSectionIds,
   ]);
   const hiddenSections = normalizeHiddenSections(portfolio?.hidden_sections);
-  const notApplicableSections = (portfolio?.not_applicable_sections as string[] | null) ?? [];
+  const notApplicableSections = normalizeNotApplicableSections(portfolio?.not_applicable_sections);
   const sectionLayouts = (portfolio?.section_layouts as Record<string, string>) ?? {};
   const templateId = portfolio?.template_id ?? "minimal";
   const isSectionDataLoading = Boolean(portfolioId) && [

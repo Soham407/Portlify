@@ -177,8 +177,8 @@ const Hero = ({ authState }: HeroProps) => {
           >
             {[
               { value: `${TEMPLATE_CATALOG.length}`, label: "Premium templates" },
-              { value: "/p/username", label: "Public portfolio route" },
-              { value: "/share/link", label: "Private review route" },
+              { value: "Go live fast", label: "Public portfolio in minutes" },
+              { value: "Share privately", label: "Review links before publishing" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="text-2xl font-bold md:text-3xl">{stat.value}</div>

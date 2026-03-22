@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_SECTION_ORDER } from "@/lib/constants";
+import { normalizeNotApplicableSections } from "@/lib/portfolioSections";
 
 type PortfolioRecord = Tables<"portfolios">;
 type PortfolioUpdate = TablesUpdate<"portfolios"> & { id?: string };
@@ -260,9 +261,15 @@ export const usePortfolio = (specificPortfolioId?: string) => {
     mutationFn: async (updates: { section_order?: string[]; hidden_sections?: string[]; not_applicable_sections?: string[] }) => {
       const targetId = specificPortfolioId || portfolio?.id;
       if (!targetId) throw new Error("No portfolio to update");
+      const sanitizedUpdates = {
+        ...updates,
+        ...(updates.not_applicable_sections
+          ? { not_applicable_sections: normalizeNotApplicableSections(updates.not_applicable_sections) }
+          : {}),
+      };
       const { data, error } = await supabase
         .from("portfolios")
-        .update(updates)
+        .update(sanitizedUpdates)
         .eq("id", targetId)
         .select()
         .single();

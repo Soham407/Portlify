@@ -193,6 +193,15 @@
     box-shadow: var(--shadow-card);
   }
 
+  .portfolio-card-live-preview {
+    contain: layout paint;
+  }
+
+  .portfolio-card-live-preview .sticky {
+    position: static !important;
+    top: auto !important;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

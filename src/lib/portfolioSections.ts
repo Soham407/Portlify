@@ -4,6 +4,7 @@ export type PortfolioSectionId = (typeof PORTFOLIO_SECTIONS)[number]["id"];
 
 const DEFAULT_ORDER = PORTFOLIO_SECTIONS.map((section) => section.id);
 const LOCKED_SECTION_IDS: PortfolioSectionId[] = ["bio"];
+const REQUIRED_SECTION_IDS: PortfolioSectionId[] = ["bio"];
 const CONTACT_SECTION_ID: PortfolioSectionId = "contact";
 
 export const normalizeSectionOrder = (sectionOrder?: string[] | null) => {
@@ -43,10 +44,22 @@ export const isLockedSection = (sectionId: string) => {
 
 export const isCustomSectionId = (sectionId: string) => sectionId.startsWith("custom:");
 
+export const canSectionBeMarkedNotApplicable = (sectionId: string) => (
+  isCustomSectionId(sectionId) || !REQUIRED_SECTION_IDS.includes(sectionId as PortfolioSectionId)
+);
+
 export const createCustomSectionId = (id: string) => `custom:${id}`;
 
 export const getOrderedCustomSectionIds = (sectionOrder?: string[] | null) =>
   normalizeSectionOrder(sectionOrder).filter(isCustomSectionId);
+
+export const normalizeNotApplicableSections = (notApplicableSections?: string[] | null) => {
+  return (notApplicableSections || []).filter((section, index, array) => (
+    (DEFAULT_ORDER.includes(section as PortfolioSectionId) || isCustomSectionId(section)) &&
+    canSectionBeMarkedNotApplicable(section) &&
+    array.indexOf(section) === index
+  ));
+};
 
 export const getSectionVisibilityState = (
   sectionId: string,
@@ -54,7 +67,7 @@ export const getSectionVisibilityState = (
   notApplicableSections?: string[] | null
 ) => {
   const hidden = normalizeHiddenSections(hiddenSections).includes(sectionId);
-  const notApplicable = (notApplicableSections || []).includes(sectionId);
+  const notApplicable = normalizeNotApplicableSections(notApplicableSections).includes(sectionId);
   return {
     hidden,
     notApplicable,
@@ -74,7 +87,7 @@ export const getRenderableSectionIds = (
 ) => {
   const normalizedOrder = normalizeSectionOrder(sectionOrder);
   const normalizedHidden = new Set(normalizeHiddenSections(hiddenSections));
-  const normalizedNotApplicable = new Set(notApplicableSections || []);
+  const normalizedNotApplicable = new Set(normalizeNotApplicableSections(notApplicableSections));
 
   return normalizedOrder.filter((sectionId) => (
     !normalizedHidden.has(sectionId) &&

@@ -3,6 +3,7 @@ import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import TemplatesShowcase from "@/components/landing/TemplatesShowcase";
+import LandingFeedback from "@/components/landing/LandingFeedback";
 import Footer from "@/components/landing/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import type { LandingAuthState } from "@/components/landing/types";
@@ -23,6 +24,7 @@ const Index = () => {
       <Features />
       <HowItWorks />
       <TemplatesShowcase authState={authState} />
+      <LandingFeedback userId={user?.id} />
       <Footer />
     </div>
   );
