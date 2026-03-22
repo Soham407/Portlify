@@ -1,6 +1,6 @@
-# Portfolio Project
+# Portlify
 
-This is a portfolio project built with:
+This is Portlify, built with:
 - Vite
 - TypeScript
 - React

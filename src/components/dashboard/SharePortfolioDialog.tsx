@@ -75,7 +75,7 @@ const SharePortfolioDialog = ({
                 onClick={() => void onCopyLink(shareUrl)}
                 disabled={!shareUrl}
               >
-                {copied ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                {copied ? <CheckCheck className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
           </div>

@@ -25,6 +25,7 @@ import CreatePortfolioDialog from "@/components/dashboard/CreatePortfolioDialog"
 import DashboardStatsGrid from "@/components/dashboard/DashboardStatsGrid";
 import PortfolioCard from "@/components/dashboard/PortfolioCard";
 import SharePortfolioDialog from "@/components/dashboard/SharePortfolioDialog";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useProfile } from "@/hooks/useProfile";
@@ -411,14 +412,14 @@ const Dashboard = () => {
       value: String(viewCount ?? 0),
       sub: "Total views",
       icon: Users,
-      color: "text-blue-600 bg-blue-500/10",
+      color: "text-foreground bg-secondary",
     },
     {
       label: "Completion",
       value: `${completionVal}%`,
       sub: completionVal < 100 ? "Keep adding sections" : "Complete!",
       icon: Zap,
-      color: "text-violet-600 bg-violet-500/10",
+      color: "text-primary bg-primary/10",
       progress: completionVal,
     },
     {
@@ -426,7 +427,7 @@ const Dashboard = () => {
       value: `${projects.length}/5`,
       sub: "Add more projects",
       icon: Briefcase,
-      color: "text-emerald-600 bg-emerald-500/10",
+      color: "text-accent-foreground bg-accent/30",
     },
     {
       label: "Visibility",
@@ -445,9 +446,9 @@ const Dashboard = () => {
       icon: TrendingUp,
       color:
         portfolio?.visibility === "public"
-          ? "text-emerald-600 bg-emerald-500/10"
+          ? "text-primary bg-primary/10"
           : portfolio?.visibility === "unlisted"
-            ? "text-amber-600 bg-amber-500/10"
+            ? "text-accent-foreground bg-accent/30"
             : "text-muted-foreground bg-muted",
     },
   ];
@@ -464,17 +465,18 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-xl">
+    <div className="app-shell min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-card/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="group flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary transition-transform group-hover:scale-105">
               <Briefcase className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold">PortfolioBuilder</span>
+            <span className="text-lg font-bold">Portlify</span>
           </Link>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle compact />
             <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-foreground">
               <Link to={`${builderHref}${builderHref.includes("?") ? "&" : "?"}section=settings`}>
                 <Settings className="h-4 w-4" />
@@ -546,7 +548,7 @@ const Dashboard = () => {
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8 rounded-xl border border-primary/20 bg-primary/5 p-4"
+              className="surface-panel mb-8 rounded-[1.7rem] p-4"
             >
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium">Portfolio Completion</span>
@@ -599,7 +601,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-6 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-violet-500/5 p-5">
+          <div className="surface-wood mt-6 rounded-[1.7rem] p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-sm">

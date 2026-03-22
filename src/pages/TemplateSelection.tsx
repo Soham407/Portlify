@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft, Briefcase } from "lucide-react";
 import { motion } from "framer-motion";
+import ThemeToggle from "@/components/ThemeToggle";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
 import { TEMPLATE_CATALOG } from "@/lib/templateCatalog";
@@ -21,8 +22,8 @@ const TemplateSelection = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+    <div className="app-shell min-h-screen">
+      <header className="border-b border-border/70 bg-card/85 backdrop-blur">
         <div className="container flex h-14 items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
             <Link to="/dashboard"><ArrowLeft className="h-4 w-4" /></Link>
@@ -32,6 +33,9 @@ const TemplateSelection = () => {
               <Briefcase className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-semibold">Choose Template</span>
+          </div>
+          <div className="ml-auto">
+            <ThemeToggle compact />
           </div>
         </div>
       </header>
@@ -51,7 +55,7 @@ const TemplateSelection = () => {
                   onClick={() => handleSelect(template.id)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`group relative rounded-xl border-2 p-1.5 text-left transition-all ${
+                  className={`group relative rounded-[1.6rem] border-2 p-1.5 text-left transition-all ${
                     isActive ? "border-primary shadow-glow" : "border-border hover:border-primary/40"
                   }`}
                 >
@@ -63,7 +67,7 @@ const TemplateSelection = () => {
 
                   {template.preview}
 
-                  <div className="p-3">
+                  <div className="surface-panel rounded-[1.1rem] border-0 p-3">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: template.dotColor }} />
                       <h3 className="font-semibold">{template.name}</h3>

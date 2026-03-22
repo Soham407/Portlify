@@ -26,7 +26,7 @@ const publishingHighlights = [
 
 const Footer = () => {
   return (
-    <footer className="border-t border-border bg-card">
+    <footer className="border-t border-border/70 bg-card/75 backdrop-blur-xl">
       <div className="container py-12">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.3fr_repeat(3,0.7fr)]">
           <div>
@@ -34,7 +34,7 @@ const Footer = () => {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
                 <Briefcase className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-bold">PortfolioBuilder</span>
+              <span className="font-bold">Portlify</span>
             </Link>
             <p className="mb-5 max-w-xs text-sm leading-relaxed text-muted-foreground">
               Build a stunning, recruiter-ready portfolio in minutes with AI-powered tools and premium templates.
@@ -43,7 +43,7 @@ const Footer = () => {
               {publishingHighlights.map(({ icon: Icon, label }) => (
                 <span
                   key={label}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground"
+                  className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-xs text-muted-foreground"
                 >
                   <Icon className="h-3.5 w-3.5 text-primary" />
                   {label}
@@ -82,7 +82,7 @@ const Footer = () => {
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-8 md:flex-row">
           <p className="text-xs text-muted-foreground">
-            Copyright {new Date().getFullYear()} PortfolioBuilder. All rights reserved.
+            Copyright {new Date().getFullYear()} Portlify. All rights reserved.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
             <span>Public URLs</span>

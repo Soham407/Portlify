@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Briefcase, ArrowLeft, Mail, Check } from "lucide-react";
+import { ArrowLeft, Briefcase, Check, Mail } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,23 +32,26 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-8">
-      <div className="w-full max-w-sm">
-        <Link to="/" className="mb-8 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-            <Briefcase className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-bold">PortfolioBuilder</span>
-        </Link>
+    <div className="app-shell flex min-h-screen items-center justify-center p-6 sm:p-8">
+      <div className="surface-panel w-full max-w-md rounded-[2rem] p-6 sm:p-8">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+              <Briefcase className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-bold">Portlify</span>
+          </Link>
+          <ThemeToggle compact />
+        </div>
 
         {isSent ? (
-          <div className="text-center space-y-4">
+          <div className="space-y-4 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Check className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-2xl font-bold">Check your email</h1>
             <p className="text-sm text-muted-foreground">
-              We sent a password reset link to <strong>{email}</strong>
+              We sent a password reset link to <strong>{email}</strong>.
             </p>
             <Link to="/login" className="text-sm text-primary hover:underline">
               Back to login
@@ -57,7 +61,7 @@ const ForgotPassword = () => {
           <>
             <h1 className="mb-2 text-2xl font-bold">Forgot your password?</h1>
             <p className="mb-8 text-sm text-muted-foreground">
-              Enter your email and we'll send you a reset link.
+              Enter your email and we&apos;ll send you a reset link.
             </p>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">

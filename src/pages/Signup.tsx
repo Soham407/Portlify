@@ -2,15 +2,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Briefcase, Eye, EyeOff, Mail, CheckCircle2 } from "lucide-react";
+import { Briefcase, CheckCircle2, Eye, EyeOff, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth, getOnboardingRedirect } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const perks = [
-  "Free forever — no credit card needed",
+  "Free forever - no credit card needed",
   "AI content polish with one click",
-  "Import from GitHub & LinkedIn",
+  "Import from GitHub and LinkedIn",
   "Shareable public portfolio URL",
 ];
 
@@ -51,40 +52,43 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left panel */}
-      <div className="hidden w-1/2 flex-col items-center justify-center bg-gradient-primary p-12 lg:flex">
-        <div className="max-w-sm text-primary-foreground">
-          <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-foreground/20 backdrop-blur-sm">
-            <Briefcase className="h-7 w-7" />
+    <div className="app-shell grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="hidden p-6 lg:flex">
+        <div className="surface-wood flex w-full flex-col justify-center rounded-[2.25rem] p-12">
+          <div className="max-w-sm text-foreground">
+            <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow">
+              <Briefcase className="h-7 w-7" />
+            </div>
+            <h2 className="mb-3 text-3xl font-bold">Build Your Future</h2>
+            <p className="mb-8 leading-relaxed text-muted-foreground">
+              Join professionals showcasing their work with a cleaner portfolio workflow and thoughtful presentation.
+            </p>
+            <ul className="space-y-3">
+              {perks.map((perk) => (
+                <li key={perk} className="flex items-center gap-3 text-sm text-foreground/90">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+                  {perk}
+                </li>
+              ))}
+            </ul>
           </div>
-          <h2 className="mb-3 text-3xl font-bold">Build Your Future</h2>
-          <p className="mb-8 text-primary-foreground/75 leading-relaxed">
-            Join thousands of professionals showcasing their work with stunning, recruiter-ready portfolios.
-          </p>
-          <ul className="space-y-3">
-            {perks.map((perk) => (
-              <li key={perk} className="flex items-center gap-3 text-sm text-primary-foreground/90">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-primary-foreground" />
-                {perk}
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="flex w-full items-center justify-center p-8 lg:w-1/2">
-        <div className="w-full max-w-sm">
-          <Link to="/" className="mb-8 flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-              <Briefcase className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold">PortfolioBuilder</span>
-          </Link>
+      <div className="flex items-center justify-center p-6 sm:p-8">
+        <div className="surface-panel w-full max-w-md rounded-[2rem] p-6 sm:p-8">
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <Link to="/" className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+                <Briefcase className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold">Portlify</span>
+            </Link>
+            <ThemeToggle compact />
+          </div>
 
           <h1 className="mb-1 text-2xl font-bold">Create your account</h1>
-          <p className="mb-7 text-sm text-muted-foreground">Start building your portfolio for free — no card required</p>
+          <p className="mb-7 text-sm text-muted-foreground">Start building your portfolio for free with no card required.</p>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
@@ -101,7 +105,7 @@ const Signup = () => {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Min 6 characters"
+                  placeholder="Minimum 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

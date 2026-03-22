@@ -23,7 +23,7 @@ const DashboardStatsGrid = ({ stats }: DashboardStatsGridProps) => (
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.06 }}
-        className="rounded-xl border border-border bg-card p-5 shadow-card"
+        className="surface-panel rounded-[1.5rem] p-5"
       >
         <div className="flex items-start justify-between">
           <div>

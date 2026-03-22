@@ -15,7 +15,11 @@ export const getPortfolioPublicUrl = ({
 }: ShareUrlOptions) => {
   if (!portfolio || !username) return "";
 
-  return `${origin}/p/${username}${portfolio.share_token ? `/${portfolio.share_token}` : ""}`;
+  if (portfolio.is_default || !portfolio.share_token) {
+    return `${origin}/p/${username}`;
+  }
+
+  return `${origin}/p/${username}/${portfolio.share_token}`;
 };
 
 export const getPortfolioShareUrl = (options: ShareUrlOptions) => {

@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Briefcase, Eye, EyeOff, Check } from "lucide-react";
+import { Briefcase, Check, Eye, EyeOff } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,17 +20,17 @@ const ResetPassword = () => {
   const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "Please try again.";
 
   useEffect(() => {
-    // Check if we have a recovery session
     const hash = window.location.hash;
     if (hash.includes("type=recovery")) {
       setIsValidSession(true);
     }
-    // Also listen for auth state change
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsValidSession(true);
       }
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -58,11 +59,20 @@ const ResetPassword = () => {
 
   if (!isValidSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-8">
-        <div className="text-center space-y-4">
+      <div className="app-shell flex min-h-screen items-center justify-center p-6 sm:p-8">
+        <div className="surface-panel w-full max-w-md rounded-[2rem] p-6 text-center sm:p-8">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+                <Briefcase className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold">Portlify</span>
+            </div>
+            <ThemeToggle compact />
+          </div>
           <h1 className="text-2xl font-bold">Invalid Reset Link</h1>
-          <p className="text-muted-foreground">This link has expired or is invalid.</p>
-          <Link to="/forgot-password" className="text-primary hover:underline">
+          <p className="mt-2 text-muted-foreground">This link has expired or is invalid.</p>
+          <Link to="/forgot-password" className="mt-4 inline-flex text-primary hover:underline">
             Request a new link
           </Link>
         </div>
@@ -71,17 +81,20 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-8">
-      <div className="w-full max-w-sm">
-        <Link to="/" className="mb-8 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-            <Briefcase className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-bold">PortfolioBuilder</span>
-        </Link>
+    <div className="app-shell flex min-h-screen items-center justify-center p-6 sm:p-8">
+      <div className="surface-panel w-full max-w-md rounded-[2rem] p-6 sm:p-8">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+              <Briefcase className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-bold">Portlify</span>
+          </Link>
+          <ThemeToggle compact />
+        </div>
 
         {isReset ? (
-          <div className="text-center space-y-4">
+          <div className="space-y-4 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Check className="h-6 w-6 text-primary" />
             </div>
@@ -99,7 +112,7 @@ const ResetPassword = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="Enter your new password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -122,7 +135,7 @@ const ResetPassword = () => {
                 <Input
                   id="confirm"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Re-enter your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

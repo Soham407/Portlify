@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LinkedInImport from "@/components/LinkedInImport";
 import AvatarUpload from "@/components/builder/AvatarUpload";
 import AIPolishButton from "@/components/builder/AIPolishButton";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -774,9 +775,9 @@ const Builder = () => {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="app-shell flex min-h-screen flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-card/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-card/85 backdrop-blur-xl">
         <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
           <Button variant="ghost" size="icon" className="shrink-0" asChild>
             <Link to="/dashboard"><ArrowLeft className="h-4 w-4" /></Link>
@@ -785,7 +786,7 @@ const Builder = () => {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-primary">
               <Briefcase className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm hidden sm:block">Portfolio Builder</span>
+            <span className="hidden text-sm font-semibold sm:block">Portlify</span>
           </div>
 
           {/* Progress bar — center */}
@@ -798,6 +799,7 @@ const Builder = () => {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle compact />
             <Button variant="outline" size="sm" asChild>
               <Link to={previewHref}>
                 <Eye className="h-3.5 w-3.5 sm:mr-1.5" />
@@ -810,7 +812,7 @@ const Builder = () => {
 
       <div className="flex flex-1">
         {/* Sidebar — desktop */}
-        <aside className="hidden w-60 shrink-0 border-r border-border bg-card lg:block">
+        <aside className="hidden w-60 shrink-0 border-r border-border/70 bg-card/70 backdrop-blur lg:block">
           <div className="sticky top-14 p-3">
             <p className="mb-2 px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sections</p>
             <nav className="space-y-0.5">
@@ -845,7 +847,7 @@ const Builder = () => {
                         )}
                       </div>
                     </div>
-                    {filled && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />}
+                    {filled && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
                   </button>
                 );
               })}
@@ -891,7 +893,7 @@ const Builder = () => {
                           <section.icon className="h-3.5 w-3.5 shrink-0" />
                           <span>{section.label}</span>
                           {deferred && <span className="ml-auto text-[10px] font-semibold text-muted-foreground">N/A</span>}
-                          {filled && <Check className="ml-auto h-3 w-3 text-emerald-500" />}
+                  {filled && <Check className="ml-auto h-3 w-3 text-primary" />}
                         </button>
                       );
                     })}
@@ -1125,9 +1127,9 @@ const Builder = () => {
                 <div className="space-y-4">
                   {renderNotApplicableControl("experience", "Experience")}
                   {isSectionNotApplicable("experience") && experiences.length === 0 && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-sm text-foreground">
                       <p className="font-medium">Experience is marked as not applicable for now.</p>
-                      <p className="mt-1 text-emerald-800">
+                      <p className="mt-1 text-muted-foreground">
                         This section still counts toward Builder progress and stays hidden from your portfolio until you add real experience.
                       </p>
                       <Button className="mt-3" variant="outline" size="sm" onClick={() => void toggleNotApplicable("experience", false)}>
@@ -1306,9 +1308,9 @@ const Builder = () => {
                 <div className="space-y-4">
                   {renderNotApplicableControl("certifications", "Certifications")}
                   {isSectionNotApplicable("certifications") && certifications.length === 0 && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-sm text-foreground">
                       <p className="font-medium">Certifications are marked as not applicable for now.</p>
-                      <p className="mt-1 text-emerald-800">
+                      <p className="mt-1 text-muted-foreground">
                         This section still counts toward Builder progress and stays hidden from your portfolio until you add credentials later.
                       </p>
                       <Button className="mt-3" variant="outline" size="sm" onClick={() => void toggleNotApplicable("certifications", false)}>
@@ -1489,13 +1491,13 @@ const Builder = () => {
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         {usernameStatus === "checking" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                        {usernameStatus === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        {usernameStatus === "available" && <CheckCircle2 className="h-4 w-4 text-primary" />}
                         {(usernameStatus === "taken" || usernameStatus === "invalid") && <XCircle className="h-4 w-4 text-destructive" />}
                       </div>
                     </div>
                     {usernameStatus === "taken" && <p className="text-xs text-destructive">Username already taken</p>}
                     {usernameStatus === "invalid" && <p className="text-xs text-destructive">3–30 characters, only a-z 0-9 _ -</p>}
-                    {usernameStatus === "available" && <p className="text-xs text-emerald-600">Username is available!</p>}
+                    {usernameStatus === "available" && <p className="text-xs text-primary">Username is available!</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -1511,7 +1513,7 @@ const Builder = () => {
                     <div className="rounded-xl border border-border bg-card p-4">
                       <div className="flex items-start gap-3">
                         {visibilityValue === "public"
-                          ? <Globe className="mt-0.5 h-4 w-4 text-emerald-600" />
+                          ? <Globe className="mt-0.5 h-4 w-4 text-primary" />
                           : <Lock className="mt-0.5 h-4 w-4 text-muted-foreground" />}
                         <div className="space-y-1">
                           <p className="text-sm font-medium">

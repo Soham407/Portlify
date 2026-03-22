@@ -7,10 +7,12 @@ import SectionLayoutPicker from "@/components/preview/SectionLayoutPicker";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ThemeToggle from "@/components/ThemeToggle";
 import { getTemplateComponent } from "@/components/templates";
 import { usePortfolioPreviewData } from "@/hooks/usePortfolioPreviewData";
 import { toast } from "@/hooks/use-toast";
 import { PORTFOLIO_SECTIONS } from "@/lib/constants";
+import { getPortfolioShareUrl } from "@/lib/portfolioSharing";
 import { getOrderedCustomSectionIds, isCustomSectionId, normalizeSectionOrder } from "@/lib/portfolioSections";
 import { PreviewLayoutProvider } from "@/components/preview/PreviewLayoutContext";
 
@@ -401,9 +403,11 @@ const Preview = () => {
     };
   });
 
-  const shareUrl = portfolio?.visibility === "unlisted"
-    ? `${window.location.origin}/share/${portfolio?.share_token}`
-    : `${window.location.origin}/p/${profile?.username}${portfolio?.share_token ? `/${portfolio.share_token}` : ""}`;
+  const shareUrl = getPortfolioShareUrl({
+    origin: window.location.origin,
+    username: profile?.username,
+    portfolio,
+  });
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(shareUrl);
@@ -468,8 +472,8 @@ const Preview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+    <div className="app-shell min-h-screen">
+      <div className="sticky top-0 z-50 border-b border-border/70 bg-card/90 backdrop-blur">
         <div className="container flex h-12 items-center justify-between gap-3">
           <Button variant="ghost" size="sm" asChild>
             <Link to={dashboardHref} onClick={flushPendingSaves}>
@@ -477,6 +481,7 @@ const Preview = () => {
             </Link>
           </Button>
           <div className="flex items-center gap-2">
+            <ThemeToggle compact />
             <Badge variant="outline">Preview - {templateName}</Badge>
             <Button size="sm" variant="outline" onClick={() => setIsShareOpen(true)}>
               <Share2 className="mr-2 h-3.5 w-3.5" /> Share
@@ -491,7 +496,7 @@ const Preview = () => {
       </div>
 
       {editMode && (
-        <div className="border-b border-border bg-muted/40">
+        <div className="border-b border-border/70 bg-muted/40">
           <div className="container py-2 text-xs text-muted-foreground">
             Bio stays pinned first and Contact stays pinned last while you reorder the rest of the page.
           </div>
@@ -524,7 +529,7 @@ const Preview = () => {
       </PreviewLayoutProvider>
 
       {editMode && hiddenSectionItems.length > 0 && (
-        <div className="fixed bottom-24 left-6 z-40 w-[min(22rem,calc(100vw-3rem))] rounded-2xl border border-border bg-card/95 p-3 shadow-2xl backdrop-blur">
+        <div className="fixed bottom-24 left-6 z-40 w-[min(22rem,calc(100vw-3rem))] rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur">
           <button
             type="button"
             onClick={() => setIsHiddenTrayOpen((current) => !current)}
@@ -624,7 +629,7 @@ const Preview = () => {
                 <div className="flex gap-2">
                   <Input value={shareUrl} readOnly className="flex-1 text-sm" />
                   <Button size="sm" variant="outline" onClick={handleCopyLink}>
-                    {copied ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                      {copied ? <CheckCheck className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>

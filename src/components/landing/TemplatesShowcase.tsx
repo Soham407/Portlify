@@ -38,10 +38,10 @@ const TemplatesShowcase = ({ authState }: TemplatesShowcaseProps) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="group cursor-pointer overflow-hidden rounded-xl border border-border shadow-card transition-all duration-300 hover:border-primary/20 hover:shadow-glow"
+              className="group cursor-pointer overflow-hidden rounded-[1.7rem] border border-border/70 shadow-card transition-all duration-300 hover:border-primary/25 hover:shadow-glow"
             >
               <div className="h-48 overflow-hidden">{template.preview}</div>
-              <div className="bg-card p-4">
+              <div className="surface-panel rounded-b-[1.7rem] border-0 p-4">
                 <h3 className="font-semibold">{template.name}</h3>
                 <p className="text-sm text-muted-foreground">{template.description}</p>
               </div>
@@ -52,9 +52,9 @@ const TemplatesShowcase = ({ authState }: TemplatesShowcaseProps) => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.5 }}
-            className="flex flex-col items-center justify-center rounded-xl border border-dashed border-primary/30 bg-primary/5 p-8"
+            className="surface-wood flex flex-col items-center justify-center rounded-[1.7rem] p-8 text-center"
           >
-            <p className="mb-4 text-center font-semibold">
+            <p className="mb-4 font-semibold">
               {authenticated
                 ? "Try a new look for your portfolio"
                 : isLoading
@@ -82,7 +82,7 @@ const TemplatesShowcase = ({ authState }: TemplatesShowcaseProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="mt-10 grid gap-6 rounded-2xl border border-border bg-card/80 p-6 shadow-card md:grid-cols-[1.2fr_0.8fr] md:items-center"
+          className="surface-panel mt-10 grid gap-6 rounded-[2rem] p-6 md:grid-cols-[1.2fr_0.8fr] md:items-center"
         >
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Publish Your Work</p>
@@ -92,11 +92,11 @@ const TemplatesShowcase = ({ authState }: TemplatesShowcaseProps) => {
             </p>
           </div>
           <div className="grid gap-3">
-            <div className="rounded-xl border border-border bg-background px-4 py-3">
+            <div className="rounded-xl border border-border/70 bg-background/70 px-4 py-3">
               <div className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Public</div>
               <div className="mt-1 font-mono text-sm text-foreground">/p/username</div>
             </div>
-            <div className="rounded-xl border border-border bg-background px-4 py-3">
+            <div className="rounded-xl border border-border/70 bg-background/70 px-4 py-3">
               <div className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Unlisted</div>
               <div className="mt-1 font-mono text-sm text-foreground">/share/secure-link</div>
             </div>

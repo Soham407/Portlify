@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, FileText, Sparkles, Copy, Download } from "lucide-react";
 import { motion } from "framer-motion";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
@@ -74,8 +75,8 @@ const SOPGenerator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+    <div className="app-shell min-h-screen">
+      <header className="border-b border-border/70 bg-card/85 backdrop-blur">
         <div className="container flex h-14 items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
             <Link to="/dashboard"><ArrowLeft className="h-4 w-4" /></Link>
@@ -85,6 +86,9 @@ const SOPGenerator = () => {
               <FileText className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-semibold">SOP Generator</span>
+          </div>
+          <div className="ml-auto">
+            <ThemeToggle compact />
           </div>
         </div>
       </header>
@@ -96,7 +100,7 @@ const SOPGenerator = () => {
             <p className="text-muted-foreground">AI-powered SOP from your portfolio data — skills, projects, experience, and education.</p>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+          <div className="surface-panel space-y-4 rounded-[1.7rem] p-6">
             <div className="space-y-2">
               <Label>Purpose / Career Goal</Label>
               <Input
@@ -160,7 +164,7 @@ const SOPGenerator = () => {
                   </Button>
                 </div>
               </div>
-              <div className="rounded-lg border border-border bg-card p-6">
+              <div className="surface-panel rounded-[1.7rem] p-6">
                 <div className="prose prose-sm max-w-none whitespace-pre-wrap text-foreground">
                   {sop}
                 </div>

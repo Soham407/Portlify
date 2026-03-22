@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, Check, Github, Linkedin, Loader2, Sparkles, Upload } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -614,8 +615,21 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary-glow)/0.16),_transparent_28%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--surface)))]">
+    <div className="app-shell min-h-screen overflow-x-hidden">
       <div className="relative mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-10">
+        <div className="mb-4 flex items-center justify-between rounded-full border border-border/70 bg-card/80 px-4 py-3 shadow-card backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
+              <Briefcase className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-primary">Portlify</p>
+              <p className="text-xs text-muted-foreground">Guided setup</p>
+            </div>
+          </div>
+          <ThemeToggle compact />
+        </div>
+
         <div className="grid w-full gap-5 xl:grid-cols-[268px_minmax(0,1fr)] xl:gap-8">
           <aside className="hidden xl:block">
             <div className="sticky top-6 space-y-4">
@@ -625,7 +639,7 @@ const Onboarding = () => {
                     <Briefcase className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-primary">PortfolioBuilder</p>
+                    <p className="text-sm font-medium text-primary">Portlify</p>
                     <h1 className="mt-1 text-[28px] font-bold leading-[1.1] tracking-tight">Shape your portfolio</h1>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       A fast setup flow that gets you into Builder with a strong starting point.
@@ -660,7 +674,7 @@ const Onboarding = () => {
                           active
                             ? "border-primary/35 bg-primary/10 shadow-[0_20px_55px_-40px_hsl(var(--primary)/0.65)]"
                             : done
-                              ? "border-emerald-200/80 bg-emerald-50/60"
+                              ? "border-accent/30 bg-accent/15"
                               : "border-border/70 bg-background/65"
                         }`}
                       >
@@ -668,7 +682,7 @@ const Onboarding = () => {
                           <div
                             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                               done
-                                ? "bg-emerald-400 text-slate-950"
+                                ? "bg-accent text-accent-foreground"
                                 : active
                                   ? "bg-gradient-primary text-primary-foreground"
                                   : "bg-muted text-muted-foreground"
@@ -721,7 +735,7 @@ const Onboarding = () => {
                   <Briefcase className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-primary">PortfolioBuilder</p>
+                    <p className="text-sm font-medium text-primary">Portlify</p>
                   <h1 className="text-xl font-bold tracking-tight">Let&apos;s shape your portfolio</h1>
                 </div>
               </div>
@@ -744,7 +758,7 @@ const Onboarding = () => {
                         <div
                           className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
                             done
-                              ? "bg-emerald-400 text-slate-950"
+                              ? "bg-accent text-accent-foreground"
                               : active
                                 ? "bg-gradient-primary text-primary-foreground"
                                 : "bg-muted text-muted-foreground"

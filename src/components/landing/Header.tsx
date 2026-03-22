@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Briefcase, Menu, X } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LandingAuthState } from "@/components/landing/types";
@@ -29,16 +30,16 @@ const Header = ({ authState }: HeaderProps) => {
   }, []);
 
   return (
-    <header className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${scrolled ? "glass shadow-sm" : "bg-transparent"}`}>
-      <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="group flex items-center gap-2.5">
+    <header className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${scrolled ? "glass border-b border-border/70" : "bg-transparent"}`}>
+      <div className="container relative flex h-16 items-center gap-3">
+        <Link to="/" className="group z-10 flex shrink-0 items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary shadow-sm transition-transform group-hover:scale-105">
             <Briefcase className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold tracking-tight">PortfolioBuilder</span>
+          <span className="text-lg font-bold tracking-tight">Portlify</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
           {navLinks.map((link) => (
             <a key={link.href} href={link.href} className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
               {link.label}
@@ -46,7 +47,8 @@ const Header = ({ authState }: HeaderProps) => {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="ml-auto hidden items-center gap-2 md:flex">
+          <ThemeToggle compact />
           {!authResolved ? (
             <>
               <Skeleton className="h-9 w-24 rounded-md" />
@@ -74,7 +76,7 @@ const Header = ({ authState }: HeaderProps) => {
         </div>
 
         <button
-          className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+          className="ml-auto flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
           onClick={() => setMobileOpen((open) => !open)}
           aria-label="Toggle menu"
         >
@@ -92,6 +94,9 @@ const Header = ({ authState }: HeaderProps) => {
             className="border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
           >
             <div className="container flex flex-col gap-1 py-4">
+              <div className="mb-2 flex justify-end border-b border-border/70 pb-3">
+                <ThemeToggle />
+              </div>
               {navLinks.map((link) => (
                 <a
                   key={link.href}

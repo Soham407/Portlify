@@ -24,10 +24,10 @@ import {
 import type { Tables } from "@/integrations/supabase/types";
 
 const portfolioTypeColors: Record<string, string> = {
-  general: "bg-blue-500/10 text-blue-700 border-blue-200/50",
-  developer: "bg-violet-500/10 text-violet-700 border-violet-200/50",
-  designer: "bg-pink-500/10 text-pink-700 border-pink-200/50",
-  marketing: "bg-orange-500/10 text-orange-700 border-orange-200/50",
+  general: "bg-secondary text-foreground border-border/70",
+  developer: "bg-primary/10 text-primary border-primary/20",
+  designer: "bg-accent/20 text-accent-foreground border-accent/25",
+  marketing: "bg-muted text-foreground border-border/70",
 };
 
 type PortfolioRecord = Tables<"portfolios">;
@@ -71,7 +71,7 @@ const PortfolioCard = ({
       onClick={() => onSelect(portfolio.id)}
       className={`relative cursor-pointer rounded-xl border bg-card p-4 shadow-card transition-all ${
         isSelected
-          ? "border-primary/60 bg-primary/5 ring-2 ring-primary/30 shadow-[0_18px_45px_-24px_rgba(99,102,241,0.55)]"
+          ? "border-primary/60 bg-primary/5 ring-2 ring-primary/30 shadow-[0_18px_45px_-24px_hsl(var(--primary)/0.45)]"
           : portfolio.is_default
             ? "border-primary/30 bg-card/95 opacity-90 ring-1 ring-primary/10 hover:opacity-100"
             : "border-border/70 bg-card/85 opacity-75 hover:border-primary/20 hover:bg-card hover:opacity-100"
@@ -106,14 +106,14 @@ const PortfolioCard = ({
             {portfolio.visibility === "unlisted" ? (
               <Badge
                 variant="outline"
-                className="gap-1 border-amber-200 px-1.5 py-0 text-[10px] text-amber-600"
+                className="gap-1 border-accent/35 px-1.5 py-0 text-[10px] text-accent-foreground"
               >
                 <Share2 className="h-2.5 w-2.5" /> Unlisted
               </Badge>
             ) : portfolio.visibility === "public" ? (
               <Badge
                 variant="outline"
-                className="gap-1 border-emerald-200 px-1.5 py-0 text-[10px] text-emerald-600"
+                className="gap-1 border-primary/25 px-1.5 py-0 text-[10px] text-primary"
               >
                 <Globe className="h-2.5 w-2.5" /> Public
               </Badge>

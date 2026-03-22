@@ -287,7 +287,7 @@ export default function GlassTemplate({
         {renderableSections.filter((sectionId) => sectionId !== "bio").map((sectionId) => sectionContent[sectionId])}
       </div>
       <footer className="border-t border-white/10 py-8 text-center">
-        <p className="text-sm text-white/30">Built with <a href="/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">PortfolioBuilder</a></p>
+        <p className="text-sm text-white/30">Built with <a href="/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">Portlify</a></p>
       </footer>
     </div>
   );

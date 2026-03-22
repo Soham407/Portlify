@@ -10,22 +10,22 @@ const floatingCards = [
     icon: "*",
     label: "AI-Polished Bio",
     sub: "Rewrite intros and project blurbs",
-    color: "from-violet-500/10 to-purple-500/5 border-violet-200/50",
-    pos: "top-[15%] left-[3%] lg:left-[8%]",
+    color: "from-primary/20 via-primary/10 to-background border-primary/20",
+    pos: "top-[16%] left-[3%] lg:left-[8%]",
   },
   {
     icon: "+",
     label: "GitHub Synced",
     sub: "Pull featured work into your portfolio",
-    color: "from-emerald-500/10 to-teal-500/5 border-emerald-200/50",
-    pos: "top-[20%] right-[3%] lg:right-[8%]",
+    color: "from-accent/25 via-accent/10 to-background border-accent/25",
+    pos: "top-[22%] right-[3%] lg:right-[8%]",
   },
   {
     icon: "=",
     label: "Share Ready",
     sub: "Public username pages and unlisted links",
-    color: "from-orange-500/10 to-amber-500/5 border-orange-200/50",
-    pos: "bottom-[25%] left-[2%] lg:left-[6%]",
+    color: "from-secondary via-background to-background border-border/70",
+    pos: "bottom-[23%] left-[2%] lg:left-[6%]",
   },
 ];
 
@@ -39,20 +39,20 @@ const Hero = ({ authState }: HeroProps) => {
   const badgeLabel = authenticated
     ? "Welcome Back"
     : isLoading
-      ? "Portfolio Builder"
-      : "AI-Powered Portfolio Builder";
+      ? "Portlify Workspace"
+      : "AI-Powered Portfolio Studio";
   const headline = authenticated
     ? <>Keep Your <span className="text-gradient">Portfolio Moving</span></>
     : isLoading
       ? <>Build, publish, and share a <span className="text-gradient">portfolio that feels like you</span></>
       : <>Build Your <span className="text-gradient">Dream Portfolio</span> in Minutes</>;
   const description = authenticated
-    ? "Jump back into the builder, refresh your template, and publish updates without losing momentum."
+    ? "Jump back into the builder, refine your sections, and publish updates without losing momentum."
     : isLoading
       ? "Shape your story with guided editing, flexible templates, and share options for public launches or private review."
-      : "Create a recruiter-ready portfolio with AI-assisted writing, premium templates, and GitHub integration - no coding required.";
+      : "Create a recruiter-ready portfolio with AI-assisted writing, premium templates, and GitHub integration without touching code.";
   const highlightItems = authenticated
-    ? ["Continue editing", "Change templates anytime", "Share when ready"]
+    ? ["Continue editing", "Switch templates anytime", "Share when ready"]
     : isLoading
       ? ["AI-assisted writing", "Flexible templates", "Public or unlisted sharing"]
       : ["Free to start", "No credit card required", "Custom URL"];
@@ -60,8 +60,8 @@ const Hero = ({ authState }: HeroProps) => {
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden pt-16">
       <div className="pointer-events-none absolute inset-0 bg-gradient-hero" />
-      <div className="pointer-events-none absolute left-1/2 top-1/3 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-[400px] w-[400px] rounded-full bg-purple-500/5 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-[16%] h-[680px] w-[680px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute right-[12%] top-[32%] h-[320px] w-[320px] rounded-full bg-accent/10 blur-3xl" />
 
       {floatingCards.map((card, index) => (
         <motion.div
@@ -69,10 +69,10 @@ const Hero = ({ authState }: HeroProps) => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 + index * 0.15, duration: 0.5 }}
-          className={`absolute hidden items-center gap-3 rounded-xl border bg-gradient-to-br px-4 py-3 shadow-card backdrop-blur-sm xl:flex ${card.color} ${card.pos} animate-float`}
+          className={`absolute hidden items-center gap-3 rounded-[1.5rem] border bg-gradient-to-br px-4 py-3 shadow-card backdrop-blur-md xl:flex ${card.color} ${card.pos} animate-float`}
           style={{ animationDelay: `${index * 1.5}s` }}
         >
-          <span className="text-xl">{card.icon}</span>
+          <span className="text-xl text-primary">{card.icon}</span>
           <div>
             <div className="text-sm font-semibold leading-tight">{card.label}</div>
             <div className="text-xs text-muted-foreground">{card.sub}</div>
@@ -91,15 +91,15 @@ const Hero = ({ authState }: HeroProps) => {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm text-primary"
+            className="surface-panel mb-8 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm text-primary"
           >
             <Sparkles className="h-3.5 w-3.5" />
             {badgeLabel}
           </motion.div>
 
-          <h1 className="mb-6 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-7xl">{headline}</h1>
+          <h1 className="mb-6 text-5xl font-extrabold leading-[1.04] tracking-tight md:text-7xl">{headline}</h1>
 
-          <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-muted-foreground">{description}</p>
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-muted-foreground">{description}</p>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -109,7 +109,7 @@ const Hero = ({ authState }: HeroProps) => {
           >
             {highlightItems.map((item) => (
               <span key={item} className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <CheckCircle2 className="h-4 w-4 text-primary" />
                 {item}
               </span>
             ))}
@@ -161,7 +161,7 @@ const Hero = ({ authState }: HeroProps) => {
             {["Guided builder", "Template switching", "Share links"].map((item) => (
               <span
                 key={item}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1.5 text-sm text-muted-foreground backdrop-blur"
+                className="surface-panel inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-foreground"
               >
                 <Link2 className="h-3.5 w-3.5 text-primary" />
                 {item}
@@ -173,16 +173,16 @@ const Hero = ({ authState }: HeroProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.5 }}
-            className="mt-16 grid grid-cols-3 gap-8 border-t border-border pt-8"
+            className="surface-wood mt-16 grid gap-6 rounded-[2rem] px-6 py-8 text-left sm:grid-cols-3"
           >
             {[
-              { value: `${TEMPLATE_CATALOG.length}`, label: "Premium Templates" },
+              { value: `${TEMPLATE_CATALOG.length}`, label: "Premium templates" },
               { value: "/p/username", label: "Public portfolio route" },
-              { value: "/share/link", label: "Unlisted review route" },
+              { value: "/share/link", label: "Private review route" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="text-2xl font-bold md:text-3xl">{stat.value}</div>
-                <div className="text-sm text-foreground/70">{stat.label}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
               </div>
             ))}
           </motion.div>
