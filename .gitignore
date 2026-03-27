@@ -24,6 +24,11 @@ dist-ssr
 *.sw?
 
 .vercel
+.claude/worktrees/
+
+# Python build artifacts
+__pycache__/
+*.pyc
 
 # Environment variables
 .env
