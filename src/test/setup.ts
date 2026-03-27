@@ -35,6 +35,33 @@ Object.defineProperty(globalThis, "IntersectionObserver", {
   value: IntersectionObserverMock,
 });
 
+if (!window.PointerEvent) {
+  class PointerEventMock extends MouseEvent {
+    pointerId: number;
+    pointerType: string;
+    isPrimary: boolean;
+
+    constructor(type: string, params: PointerEventInit = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId ?? 1;
+      this.pointerType = params.pointerType ?? "mouse";
+      this.isPrimary = params.isPrimary ?? true;
+    }
+  }
+
+  Object.defineProperty(window, "PointerEvent", {
+    writable: true,
+    configurable: true,
+    value: PointerEventMock,
+  });
+
+  Object.defineProperty(globalThis, "PointerEvent", {
+    writable: true,
+    configurable: true,
+    value: PointerEventMock,
+  });
+}
+
 const createStorage = () => {
   const store = new Map<string, string>();
 

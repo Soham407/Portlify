@@ -296,7 +296,7 @@ const Preview = () => {
     persistSectionControls([...defaultSectionsWithoutContact, ...customSectionIds, "contact"], [], notApplicableSections);
   };
 
-  const resetDragSession = (options?: { revertOrder?: boolean }) => {
+  const resetDragSession = useCallback((options?: { revertOrder?: boolean }) => {
     if (options?.revertOrder && dragSessionRef.current) {
       setSectionOrder(dragSessionRef.current.initialOrder);
       sectionOrderRef.current = dragSessionRef.current.initialOrder;
@@ -305,7 +305,7 @@ const Preview = () => {
     dragSessionRef.current = null;
     setDraggedSectionId(null);
     setActiveDropTargetId(null);
-  };
+  }, []);
 
   const getSectionIdFromPoint = (clientX: number, clientY: number) => {
     const elements = document.elementsFromPoint(clientX, clientY);
@@ -322,7 +322,7 @@ const Preview = () => {
     return null;
   };
 
-  const handleDragHandleStart = (sectionId: string, pointerId: number) => {
+  const handleDragHandleStart = useCallback((sectionId: string, pointerId: number) => {
     if (!editMode) return;
 
     dragSessionRef.current = {
@@ -332,11 +332,13 @@ const Preview = () => {
     };
     setDraggedSectionId(sectionId);
     setActiveDropTargetId(sectionId);
-  };
+  }, [editMode]);
 
-  const handleDragHandleMove = (pointerId: number, clientX: number, clientY: number) => {
+  const handleDragHandleMove = useCallback((pointerId: number, clientX: number, clientY: number) => {
     const activeDrag = dragSessionRef.current;
-    if (!activeDrag || activeDrag.pointerId !== pointerId || !draggedSectionId) return;
+    if (!activeDrag || activeDrag.pointerId !== pointerId) return;
+
+    const draggedId = activeDrag.sectionId;
 
     const targetSectionId = getSectionIdFromPoint(clientX, clientY);
     if (!targetSectionId || targetSectionId === "bio") {
@@ -346,32 +348,30 @@ const Preview = () => {
 
     setActiveDropTargetId(targetSectionId);
 
-    if (targetSectionId === draggedSectionId) return;
+    if (targetSectionId === draggedId) return;
 
     const currentOrder = sectionOrderRef.current;
-    const fromIndex = currentOrder.indexOf(draggedSectionId);
+    const fromIndex = currentOrder.indexOf(draggedId);
     const targetIndex = currentOrder.indexOf(targetSectionId);
 
     if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return;
 
     const nextOrder = [...currentOrder];
     nextOrder.splice(fromIndex, 1);
-    nextOrder.splice(targetIndex, 0, draggedSectionId);
+    nextOrder.splice(targetIndex, 0, draggedId);
 
     const normalizedOrder = normalizeSectionOrder(nextOrder);
     if (areSectionListsEqual(normalizedOrder, currentOrder)) return;
 
     sectionOrderRef.current = normalizedOrder;
     setSectionOrder(normalizedOrder);
-  };
+  }, []);
 
-  const handleDragHandleEnd = (pointerId: number) => {
+  const handleDragHandleEnd = useCallback((pointerId: number) => {
     const activeDrag = dragSessionRef.current;
     if (!activeDrag || activeDrag.pointerId !== pointerId) return;
 
-    const shouldPersist = Boolean(
-      draggedSectionId && !areSectionListsEqual(activeDrag.initialOrder, sectionOrderRef.current)
-    );
+    const shouldPersist = !areSectionListsEqual(activeDrag.initialOrder, sectionOrderRef.current);
     const nextOrder = sectionOrderRef.current;
 
     resetDragSession();
@@ -379,13 +379,39 @@ const Preview = () => {
     if (shouldPersist) {
       persistSectionControls(nextOrder, hiddenSectionsRef.current, notApplicableSectionsRef.current);
     }
-  };
+  }, [persistSectionControls, resetDragSession]);
 
-  const handleDragHandleCancel = (pointerId: number) => {
+  const handleDragHandleCancel = useCallback((pointerId: number) => {
     const activeDrag = dragSessionRef.current;
     if (!activeDrag || activeDrag.pointerId !== pointerId) return;
     resetDragSession({ revertOrder: true });
-  };
+  }, [resetDragSession]);
+
+  useEffect(() => {
+    if (!draggedSectionId) return;
+
+    const handleWindowPointerMove = (event: PointerEvent) => {
+      handleDragHandleMove(event.pointerId, event.clientX, event.clientY);
+    };
+
+    const handleWindowPointerUp = (event: PointerEvent) => {
+      handleDragHandleEnd(event.pointerId);
+    };
+
+    const handleWindowPointerCancel = (event: PointerEvent) => {
+      handleDragHandleCancel(event.pointerId);
+    };
+
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", handleWindowPointerUp);
+    window.addEventListener("pointercancel", handleWindowPointerCancel);
+
+    return () => {
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerUp);
+      window.removeEventListener("pointercancel", handleWindowPointerCancel);
+    };
+  }, [draggedSectionId, handleDragHandleCancel, handleDragHandleEnd, handleDragHandleMove]);
 
   const hiddenSectionItems = hiddenSections.map((sectionId) => {
     if (isCustomSectionId(sectionId)) {

@@ -47,7 +47,6 @@ export default function SectionWrapper({ id, editMode, onEdit, children }: Secti
                 if (!previewLayout) return;
                 event.preventDefault();
                 event.stopPropagation();
-                event.currentTarget.setPointerCapture(event.pointerId);
                 previewLayout.onDragHandleStart(id, event.pointerId);
               }}
               onPointerMove={(event) => {
@@ -56,19 +55,13 @@ export default function SectionWrapper({ id, editMode, onEdit, children }: Secti
               }}
               onPointerUp={(event) => {
                 if (!previewLayout) return;
-                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-                }
                 previewLayout.onDragHandleEnd(event.pointerId);
               }}
               onPointerCancel={(event) => {
                 if (!previewLayout) return;
-                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-                }
                 previewLayout.onDragHandleCancel(event.pointerId);
               }}
-              className={`inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 transition-all hover:bg-accent ${
+              className={`inline-flex select-none items-center gap-1 rounded-full border border-border px-3 py-1 transition-all hover:bg-accent touch-none ${
                 isDragging ? "cursor-grabbing bg-accent" : "cursor-grab"
               }`}
             >
